@@ -222,7 +222,7 @@ bool init_server(int argc,char* argv[])
             return(false);            
         }
         if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || (cstat.st_mode != (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) ){
-            syslog(LOG_INFO,"wrong access rights on the group file %s (root:root/0644 is required)",(const char*)GroupFileName);
+            syslog(LOG_INFO,"wrong access rights on the group file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)GroupFileName,cstat.st_uid,cstat.st_gid,cstat.st_mode);
             return(false);
         }
         
