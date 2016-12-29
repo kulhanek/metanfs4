@@ -19,6 +19,15 @@ static int grdbid = 0;
 
 /* -------------------------------------------------------------------------- */
 
+NSS_STATUS
+_nss_metanfs4_getgrnam_r(const char *name, struct group *result, 
+                    char *buffer, size_t buflen, int *errnop);
+NSS_STATUS
+_nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
+                    char *buffer, size_t buflen, int *errnop);
+
+/* -------------------------------------------------------------------------- */
+
 NSS_STATUS 
 _nss_metanfs4_setpwent(void)
 {
@@ -81,10 +90,7 @@ NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                      char *buffer, size_t buflen, int *errnop)
 {
-    int gid = -1;
-    struct group    grp;
-    char            buff[MAX_BUFFER];
-    struct group*   rgrp = NULL;
+    int gid;
     int uid;
 
     if( strstr(name,"@") == NULL ){
@@ -101,8 +107,8 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     }
 
     gid = get_gid("NOGROUP");
-    if( gid > 0 ){
-        gid = rgrp->gr_gid;
+    if( gid <= 0 ){
+        gid = -1;
     }
     
     if( strlen(name) + 1 > buflen ) {
@@ -132,12 +138,10 @@ NSS_STATUS
 _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
                      size_t buflen, int *errnop)
 {  
-    int gid = -1;
-    struct group    grp;
-    char            buff[MAX_BUFFER];
-    struct group*   rgrp = NULL;
-
-    int ret = get_name(uid,buffer,buflen);
+    int gid;
+    int ret;
+    
+    ret = get_name(uid,buffer,buflen);
     if( ret != 0 ){
         if( errnop && (ret < 0) ) *errnop = ENOENT;
         if( errnop && (ret > 0) ) *errnop = ERANGE;
@@ -145,8 +149,8 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
     }
     
     gid = get_gid("NOGROUP");
-    if( gid > 0 ){
-        gid = rgrp->gr_gid;
+    if( gid <= 0 ){
+        gid = -1;
     }
 
     result->pw_name = buffer;
