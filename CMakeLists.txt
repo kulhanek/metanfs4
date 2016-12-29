@@ -25,6 +25,10 @@ IF(NOT DEVELOPMENT_ROOT)
     MESSAGE(FATAL_ERROR "DEVELOPMENT_ROOT variable is not set!")
 ENDIF(NOT DEVELOPMENT_ROOT)
 
+# boost ---------------------------------------
+SET(BOOST_ROOT ${DEVELOPMENT_ROOT}/thirdparty/boost/1.59.0)
+INCLUDE_DIRECTORIES(${BOOST_ROOT} SYSTEM)
+
 # HIPOLY ====================
 SET(HIPOLY_ROOT ${DEVELOPMENT_ROOT}/projects/hipoly/1.0)
 INCLUDE_DIRECTORIES(${HIPOLY_ROOT}/src/lib/hipoly SYSTEM)
