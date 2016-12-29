@@ -665,15 +665,19 @@ void start_main_loop(void)
                 break;
                 
                 case MSG_GROUP_MEMBER:{
-                    // get relevant data
+                    data.Type = MSG_UNAUTHORIZED;
                     std::string gname(data.Name);
                     std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(gname);
                     if( git != GroupMembers.end() ){
                         std::set<std::string>::iterator uit = git->second.begin();
-                        for(int i=0; i < data.ID; i++) uit++;
+                        for(int i=0; i < data.ID; i++){
+                            if( uit == git->second.end() ) break;
+                            uit++;
+                        }
                         if( uit != git->second.end() ){
                             std::string name = *uit;
                             data.Type = MSG_GROUP_MEMBER;
+                            data.ID = 0;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
                         }
                     }
