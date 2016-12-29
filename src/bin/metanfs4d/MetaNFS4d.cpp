@@ -174,41 +174,41 @@ bool init_server(int argc,char* argv[])
         
         struct stat cstat;
         if( stat(CacheFileName,&cstat) != 0 ){
-            syslog(LOG_INFO,"unable to stat the cache file %s",(const char*)CacheFileName);
-            return(false);            
-        }
-        if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-            syslog(LOG_INFO,"wrong access rights on the cache file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)CacheFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
-            return(false);
-        }
-        
-        std::ifstream fin;
-        fin.open(CacheFileName);
-        int num = 0;
-        while( fin ){
-            char        type = '-';
-            std::string name;
-            int         nid = -1;
-            fin >> type >> name >> nid;
-            if( (!fin) && (type == 'n') ){
-                NameToID[name] = nid;
-                IDToName[nid] = name;  
-                if( TopNameID < nid ){
-                    TopNameID = nid;
-                }
-                num++;
+            syslog(LOG_INFO,"ignore cache - unable to stat the cache file %s",(const char*)CacheFileName);          
+        } else {
+            if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
+                syslog(LOG_INFO,"wrong access rights on the cache file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)CacheFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+                return(false);
             }
-            if( (!fin) && (type == 'g') ){
-                GroupToID[name] = nid;
-                IDToGroup[nid] = name;                
-                if( TopGroupID < nid ){
-                    TopGroupID = nid;
+            
+            std::ifstream fin;
+            fin.open(CacheFileName);
+            int num = 0;
+            while( fin ){
+                char        type = '-';
+                std::string name;
+                int         nid = -1;
+                fin >> type >> name >> nid;
+                if( (!fin) && (type == 'n') ){
+                    NameToID[name] = nid;
+                    IDToName[nid] = name;  
+                    if( TopNameID < nid ){
+                        TopNameID = nid;
+                    }
+                    num++;
                 }
-                num++;                
+                if( (!fin) && (type == 'g') ){
+                    GroupToID[name] = nid;
+                    IDToGroup[nid] = name;                
+                    if( TopGroupID < nid ){
+                        TopGroupID = nid;
+                    }
+                    num++;                
+                }
             }
+            syslog(LOG_INFO,"cached items: %d",num);
+            fin.close();
         }
-        syslog(LOG_INFO,"cached items: %d",num);
-        fin.close(); 
     }
 
 // load group if present
