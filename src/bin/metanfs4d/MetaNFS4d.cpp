@@ -667,10 +667,12 @@ void start_main_loop(void)
                 case MSG_GROUP_MEMBER:{
                     data.Type = MSG_UNAUTHORIZED;
                     std::string gname(data.Name);
+                    int mid = data.ID;
+                    memset(&data,0,sizeof(data));
                     std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(gname);
                     if( git != GroupMembers.end() ){
                         std::set<std::string>::iterator uit = git->second.begin();
-                        for(int i=0; i < data.ID; i++){
+                        for(int i=0; i < mid; i++){
                             if( uit == git->second.end() ) break;
                             uit++;
                         }
@@ -736,11 +738,15 @@ void catch_signals(int signo)
     // write cache if necessary    
     if( CacheFileName == NULL ) return;
     
+    syslog(LOG_INFO,"writing cache");
+    
     CFileName dir = CFileName(CacheFileName).GetFileDirectory();
     mkdir(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
     chmod(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH );
     
     std::ofstream fout(CacheFileName);
+    int unum = 0;
+    int gnum = 0;
     if( fout ){
         chmod(CacheFileName,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
         
@@ -749,6 +755,7 @@ void catch_signals(int signo)
         while( it != ie ){
             fout << "n " << it->first << " " << it->second << std::endl;
             it++;
+            unum++;
         } 
         
         it = GroupToID.begin();
@@ -756,9 +763,12 @@ void catch_signals(int signo)
         while( it != ie ){
             fout << "g " << it->first << " " << it->second << std::endl;
             it++;
+            gnum++;
         }
         fout.close();
     }
+    
+    syslog(LOG_INFO,"number of cache records (users/groups): %d/%d",unum,gnum);
 }
 
 // -----------------------------------------------------------------------------
