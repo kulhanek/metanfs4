@@ -37,7 +37,7 @@ _nss_metanfs4_setpwent(void)
 /* -------------------------------------------------------------------------- */
 
 NSS_STATUS
-_nss_metanfs4_getpwent_r(struct group *result, char *buffer, size_t buflen, int *errnop)
+_nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
 {
     char* name = enumerate_name(pwdbid);
     pwdbid++;
