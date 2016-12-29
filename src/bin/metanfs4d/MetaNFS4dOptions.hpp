@@ -44,7 +44,7 @@ public:
     "nogroup    name    # name of nogroup group (default: nogroup)\n"
     "[files]\n"
     "cache filename # full pathname to the daemon cache (optional)\n"      
-    "group filename # full pathname to the static NFS4 group definition (optional)\n"         
+    "group filename # full pathname to the static NFS4 group definition (optional)"         
     CSO_PROG_DESC_END
 
     CSO_PROG_ARGS_SHORT_DESC_BEGIN

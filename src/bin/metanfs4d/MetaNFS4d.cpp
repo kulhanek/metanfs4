@@ -62,6 +62,7 @@ int             NogroupID       = -1;
 CSmallString    CacheFileName;
 CSmallString    GroupFileName;
 CSmallString    LOCALDOMAIN;
+bool            Verbose = false;
 
 // data storages
 std::map<std::string,int> NameToID;
@@ -128,6 +129,8 @@ bool init_server(int argc,char* argv[])
         syslog(LOG_INFO,"unable to parse the command options or it is a test run");
         return(false);   
     }
+    
+    Verbose = options.GetOptVerbose();
 
     // handle signals
     signal(SIGINT, catch_signals);
@@ -149,6 +152,8 @@ bool init_server(int argc,char* argv[])
         syslog(LOG_INFO,"unable to read the 'local' domain from the configuration file %s",CONFIG);
         return(false);
     }
+    syslog(LOG_INFO,"local domain: %s",(const char*)LOCALDOMAIN);
+    
     
     // optional setup
     NOBODY = "nobody";
@@ -157,13 +162,15 @@ bool init_server(int argc,char* argv[])
     config.GetStringByKey("nogroup",NOGROUP);
     config.GetIntegerByKey("base",BaseID);
 
-    if( config.OpenSection("file") == true ){
+    if( config.OpenSection("files") == true ){
         config.GetStringByKey("cache",CacheFileName);
         config.GetStringByKey("group",GroupFileName);
     }   
     
 // load cache if present
     if( (CacheFileName != NULL) && (options.GetOptSkipCache() == false) ){ 
+        
+        syslog(LOG_INFO,"cache file: %s",(const char*)CacheFileName);        
         
         struct stat cstat;
         if( stat(CacheFileName,&cstat) != 0 ){
@@ -206,6 +213,8 @@ bool init_server(int argc,char* argv[])
 
 // load group if present
     if( GroupFileName != NULL ){ 
+        
+        syslog(LOG_INFO,"group file: %s",(const char*)GroupFileName);
         
         struct stat cstat;
         if( stat(GroupFileName,&cstat) != 0 ){
@@ -361,6 +370,10 @@ void start_main_loop(void)
         // receive data --------------------------
         if( recvmsg(connsckt,&msgh,0) == -1 ){
             syslog(LOG_ERR,"unable to receive message");
+        }
+        
+        if( Verbose ){
+            syslog(LOG_INFO,"request: type(%d), id(%d), name(%s)",data.Type,data.ID,data.Name);
         }
 
         // process data --------------------------
@@ -659,6 +672,10 @@ void start_main_loop(void)
             syslog(LOG_ERR,"exception raised");
             memset(&data,0,sizeof(data));
         }
+        
+        if( Verbose ){
+            syslog(LOG_INFO,"response: type(%d), id(%d), name(%s)",data.Type,data.ID,data.Name);
+        }        
 
         memset(&msgh,0,sizeof(msgh));
 
