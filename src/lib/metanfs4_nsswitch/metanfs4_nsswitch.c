@@ -128,7 +128,7 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     result->pw_uid = uid;
     result->pw_gid = gid;
     /* gecos cannot be null on Ubuntu 12.04 as it crashes nscd daemon */
-    result->pw_gecos = buffer;
+    result->pw_gecos = result->pw_name;
     result->pw_dir = "/dev/null";
     result->pw_shell = "/dev/null";
 
@@ -165,7 +165,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
     result->pw_uid = uid;
     result->pw_gid = gid;
     /* gecos cannot be null on Ubuntu 12.04 as it crashes nscd daemon */
-    result->pw_gecos = buffer;
+    result->pw_gecos = result->pw_name;
     result->pw_dir = "/dev/null";
     result->pw_shell = "/dev/null";
 
