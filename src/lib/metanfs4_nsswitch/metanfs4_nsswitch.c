@@ -32,6 +32,7 @@ NSS_STATUS
 _nss_metanfs4_setpwent(void)
 {
     pwdbid = 0;
+    return(NSS_STATUS_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -53,6 +54,7 @@ NSS_STATUS
 _nss_metanfs4_endpwent(void)
 {
     pwdbid = 0;
+    return(NSS_STATUS_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -61,6 +63,7 @@ NSS_STATUS
 _nss_metanfs4_setgrent(void)
 {
     grdbid = 0;
+    return(NSS_STATUS_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -82,6 +85,7 @@ NSS_STATUS
 _nss_metanfs4_endgrent(void)
 {
     grdbid = 0;
+    return(NSS_STATUS_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
