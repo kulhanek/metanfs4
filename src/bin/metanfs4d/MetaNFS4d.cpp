@@ -787,9 +787,10 @@ bool is_local(const std::string &name,std::string &lname)
     boost::split(bufs,name,boost::is_any_of("@"));
     
     lname = name;
-    if( bufs.size() <= 1 ) return(false);
+    if( bufs.size() <= 1 ) return(true);
     lname = bufs[0];
-    return(true);
+    if( (bufs.size() == 2) && (bufs[1] == std::string(LOCALDOMAIN)) ) return(true); 
+    return(false);
 }
 
 // -----------------------------------------------------------------------------
