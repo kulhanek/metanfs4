@@ -235,27 +235,27 @@ bool init_server(int argc,char* argv[])
             std::vector<std::string> strs;
             boost::split(strs,line,boost::is_any_of(":"));
             if( strs.size() == 4 ){
-                std::string uname = strs[2];
-                std::vector<std::string> usrs;  
-                boost::split(usrs,uname,boost::is_any_of(","));
-                if( uname.find("@") != std::string::npos ){
-                    if( GroupToID.count(uname) == 0 ){
+                std::string gname = strs[0];
+                if( gname.find("@") != std::string::npos ){
+                    if( GroupToID.count(gname) == 0 ){
                         TopGroupID++;
-                        GroupToID[uname] = TopGroupID;
-                        IDToGroup[TopGroupID] = uname; 
-                        unum++;
+                        GroupToID[gname] = TopGroupID;
+                        IDToGroup[TopGroupID] = gname; 
+                        gnum++;
                     }
+                    std::vector<std::string> usrs;  
+                    boost::split(usrs,strs[3],boost::is_any_of(","));                    
                     std::vector<std::string>::iterator it = usrs.begin();
                     std::vector<std::string>::iterator ie = usrs.end();
                     while( it != ie ){
-                        std::string gname = *it;
-                        if( gname.find("@") != std::string::npos ){
-                            if( NameToID.count(gname) == 0 ){
+                        std::string uname = *it;
+                        if( uname.find("@") != std::string::npos ){
+                            if( NameToID.count(uname) == 0 ){
                                 TopNameID++;
-                                NameToID[gname] = TopNameID;
-                                IDToName[TopNameID] = gname;
+                                NameToID[uname] = TopNameID;
+                                IDToName[TopNameID] = uname;
                                 User2Group[uname].insert(gname);
-                                gnum++;
+                                unum++;
                             }                            
                         }
                         it++;
