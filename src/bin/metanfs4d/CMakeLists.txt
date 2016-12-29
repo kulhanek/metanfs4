@@ -17,4 +17,7 @@ TARGET_LINK_LIBRARIES(metanfs4d
     ${HIPOLY_LIB_NAME}
     )
 
+INSTALL(TARGETS metanfs4d
+        DESTINATION bin)
+
 # ------------------------------------------------------------------------------

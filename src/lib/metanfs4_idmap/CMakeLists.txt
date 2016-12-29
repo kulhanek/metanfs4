@@ -16,4 +16,7 @@ SET_TARGET_PROPERTIES(idmap_metanfs4 PROPERTIES
     CLEAN_DIRECT_OUTPUT 1
     VERSION "2")
 
+INSTALL(TARGETS idmap_metanfs4
+        DESTINATION lib)
+
 # ------------------------------------------------------------------------------
