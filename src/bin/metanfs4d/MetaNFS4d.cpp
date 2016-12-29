@@ -189,7 +189,7 @@ bool init_server(int argc,char* argv[])
                 std::string name;
                 int         nid = -1;
                 fin >> type >> name >> nid;
-                if( (!fin) && (type == 'n') ){
+                if( (fin) && (type == 'n') ){
                     NameToID[name] = nid;
                     IDToName[nid] = name;  
                     if( TopNameID < nid ){
@@ -197,7 +197,7 @@ bool init_server(int argc,char* argv[])
                     }
                     num++;
                 }
-                if( (!fin) && (type == 'g') ){
+                if( (fin) && (type == 'g') ){
                     GroupToID[name] = nid;
                     IDToGroup[nid] = name;                
                     if( TopGroupID < nid ){
@@ -738,7 +738,7 @@ void catch_signals(int signo)
     // write cache if necessary    
     if( CacheFileName == NULL ) return;
     
-    syslog(LOG_INFO,"writing cache");
+    syslog(LOG_INFO,"writing cache to %s",(const char*)CacheFileName);
     
     CFileName dir = CFileName(CacheFileName).GetFileDirectory();
     mkdir(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
