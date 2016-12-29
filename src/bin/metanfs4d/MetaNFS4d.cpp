@@ -229,7 +229,9 @@ bool init_server(int argc,char* argv[])
         std::ifstream fin;
         fin.open(GroupFileName);
         int unum = 0;
-        int gnum = 0;        
+        int gnum = 0;
+        int uinum = 0;
+        int ginum = 0;           
         std::string line;        
         while( getline(fin,line) ){
             std::vector<std::string> strs;
@@ -242,6 +244,8 @@ bool init_server(int argc,char* argv[])
                         GroupToID[gname] = TopGroupID;
                         IDToGroup[TopGroupID] = gname; 
                         gnum++;
+                    } else {
+                        ginum++;
                     }
                     std::vector<std::string> usrs;  
                     boost::split(usrs,strs[3],boost::is_any_of(","));                    
@@ -256,7 +260,10 @@ bool init_server(int argc,char* argv[])
                                 IDToName[TopNameID] = uname;
                                 GroupMembers[gname].insert(uname);
                                 unum++;
-                            }                            
+                            } else {
+                                uinum++; 
+                                GroupMembers[gname].insert(uname);                                
+                            }
                         }
                         it++;
                     }
@@ -265,6 +272,7 @@ bool init_server(int argc,char* argv[])
             }
         }
         syslog(LOG_INFO,"group items (users/groups): %d/%d",unum,gnum);
+        syslog(LOG_INFO,"group items already read from cache (users/groups): %d/%d",uinum,ginum);        
         fin.close(); 
     }
     
