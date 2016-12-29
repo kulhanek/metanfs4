@@ -221,7 +221,7 @@ bool init_server(int argc,char* argv[])
             syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
             return(false);            
         }
-        if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || (cstat.st_mode != 0x644) ){
+        if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || (cstat.st_mode != (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) ){
             syslog(LOG_INFO,"wrong access rights on the group file %s (root:root/0644 is required)",(const char*)GroupFileName);
             return(false);
         }
