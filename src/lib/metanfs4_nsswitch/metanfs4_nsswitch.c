@@ -31,7 +31,6 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
 NSS_STATUS 
 _nss_metanfs4_setpwent(void)
 {
-    printf("_nss_metanfs4_setpwent\n");
     pwdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
@@ -40,10 +39,9 @@ _nss_metanfs4_setpwent(void)
 
 NSS_STATUS
 _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
-{
-    printf("_nss_metanfs4_getpwent_r\n");    
+{  
+    pwdbid++;    
     char* name = enumerate_name(pwdbid);
-    pwdbid++;
     if( name != NULL ){
         return(_nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop));
     }
@@ -54,8 +52,7 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 
 NSS_STATUS 
 _nss_metanfs4_endpwent(void)
-{
-    printf("_nss_metanfs4_endpwent\n");     
+{  
     pwdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
@@ -64,8 +61,7 @@ _nss_metanfs4_endpwent(void)
 
 NSS_STATUS 
 _nss_metanfs4_setgrent(void)
-{
-    printf("_nss_metanfs4_setgrent\n");    
+{  
     grdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
@@ -74,10 +70,9 @@ _nss_metanfs4_setgrent(void)
 
 NSS_STATUS
 _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int *errnop)
-{
-    printf("_nss_metanfs4_getgrent_r\n");       
+{     
+    grdbid++;    
     char* name = enumerate_group(grdbid);
-    grdbid++;
     if( name != NULL ){
         return(_nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop));
     }
@@ -88,8 +83,7 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 
 NSS_STATUS 
 _nss_metanfs4_endgrent(void)
-{
-    printf("_nss_metanfs4_endgrent\n");      
+{   
     grdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
