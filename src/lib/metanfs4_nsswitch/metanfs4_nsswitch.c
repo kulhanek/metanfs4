@@ -208,12 +208,16 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     char* p_mem_names = buffer;
     id = 0;
     do{
-        ret = get_group_member(gid,id,buffer,buflen);
+        ret = get_group_member(name,id,buffer,buflen);
         if( ret > 0 ){
             if( errnop ) *errnop = ERANGE;
             return(NSS_STATUS_NOTFOUND);
         }
-        if( ret == 0 ) id++;
+        if( ret == 0 ){ 
+            id++;
+            buffer += strlen(buffer) + 1;
+            buflen -= strlen(buffer) + 1;
+        }
     } while( ret == 0 );
     
     char** p_mem_list = (char**)buffer;
@@ -264,12 +268,16 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
     char* p_mem_names = buffer;
     id = 0;
     do{
-        ret = get_group_member(gid,id,buffer,buflen);
+        ret = get_group_member(result->gr_name,id,buffer,buflen);
         if( ret > 0 ){
             if( errnop ) *errnop = ERANGE;
             return(NSS_STATUS_NOTFOUND);
         }
-        if( ret == 0 ) id++;
+        if( ret == 0 ){ 
+            id++;
+            buffer += strlen(buffer) + 1;
+            buflen -= strlen(buffer) + 1;
+        }
     } while( ret == 0 );
     
     char** p_mem_list = (char**)buffer;

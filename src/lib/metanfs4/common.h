@@ -54,6 +54,7 @@
 
 #define MSG_ENUM_NAME           9
 #define MSG_ENUM_GROUP         10
+#define MSG_GROUP_MEMBER       11
 
 /* message structure */
 struct SNFS4Message {
@@ -74,6 +75,7 @@ int get_uid(const char* name);
 int get_gid(const char* name);
 int get_name(int id,char* name,int bufflen);
 int get_group(int id,char* name,int bufflen);
+int get_group_member(const char* gname,int id,char* name,int bufflen);
 
 /* info services */
 char* enumerate_name(int id);

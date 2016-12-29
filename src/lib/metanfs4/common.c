@@ -494,6 +494,69 @@ int get_group(int id,char* name,int bufflen)
 
 /* -------------------------------------------------------------------------- */
 
+int get_group_member(const char* gname,int id,char* name,int bufflen)
+{
+    struct sockaddr_un address;
+    struct msghdr       msg;
+    struct iovec        iov[1];
+    struct SNFS4Message data;
+    int addrlen;
+
+    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    if( clisckt == -1 ) return(-1);
+
+    memset(&address, 0, sizeof(struct sockaddr_un));
+
+    address.sun_family = AF_UNIX;
+    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
+    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
+
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
+
+    /* complete message */
+    iov[0].iov_base = &data;
+    iov[0].iov_len = sizeof(data);
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_GROUP_MEMBER;
+    strncpy(data.Name,gname,MAX_NAME);
+    data.ID = id;
+
+    msg.msg_name = NULL;
+    msg.msg_namelen = 0;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = 0;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+
+    if( sendmsg(clisckt,&msg,0) == -1 ) {
+        close(clisckt);
+        return(-1);
+    }
+
+    memset(&data,0,sizeof(data));
+
+    if( recvmsg(clisckt,&msg,0) == -1 ) {
+        close(clisckt);
+        return(-1);
+    }
+
+    if( data.Type != MSG_GROUP_MEMBER ) {
+        close(clisckt);
+        return(-1);
+    }
+
+    close(clisckt);
+
+    if( strlen(data.Name) + 1 > bufflen ) return(1); // out of memory    
+    strcpy(name,data.Name);
+    
+    return(0);
+}
+
+/* -------------------------------------------------------------------------- */
+
 char* enumerate_name(int id)
 {
     static char         name[MAX_NAME+1];

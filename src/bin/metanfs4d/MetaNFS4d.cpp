@@ -69,7 +69,7 @@ std::map<std::string,int> NameToID;
 std::map<int,std::string> IDToName;
 std::map<std::string,int> GroupToID;
 std::map<int,std::string> IDToGroup;
-std::map<std::string, std::set<std::string> > User2Group;
+std::map<std::string, std::set<std::string> > GroupMembers;
 
 
 // -----------------------------------------------------------------------------
@@ -254,7 +254,7 @@ bool init_server(int argc,char* argv[])
                                 TopNameID++;
                                 NameToID[uname] = TopNameID;
                                 IDToName[TopNameID] = uname;
-                                User2Group[uname].insert(gname);
+                                GroupMembers[gname].insert(uname);
                                 unum++;
                             }                            
                         }
@@ -663,6 +663,22 @@ void start_main_loop(void)
                     }
                 }
                 break;
+                
+                case MSG_GROUP_MEMBER:{
+                    // get relevant data
+                    std::string gname(data.Name);
+                    std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(gname);
+                    if( git != GroupMembers.end() ){
+                        std::set<std::string>::iterator uit = git->second.begin();
+                        for(int i=0; i < data.ID; i++) uit++;
+                        if( uit != git->second.end() ){
+                            std::string name = *uit;
+                            data.Type = MSG_GROUP_MEMBER;
+                            strncpy(data.Name,name.c_str(),MAX_NAME);
+                        }
+                    }
+                }
+                break;                
 
                 default:
                     memset(&data,0,sizeof(data));
