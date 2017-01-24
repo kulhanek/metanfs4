@@ -18,7 +18,7 @@ int idmap_get_uid(const char* name)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -77,7 +77,7 @@ int idmap_get_name(int id, char* name, int len)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-ENOENT);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -139,7 +139,7 @@ int idmap_get_gid(const char* name)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -198,7 +198,7 @@ int idmap_get_group(int id, char* name, int len)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-ENOENT);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -260,7 +260,7 @@ int get_uid(const char* name)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -319,7 +319,7 @@ int get_gid(const char* name)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -378,7 +378,7 @@ int get_name(int id,char* name,int bufflen)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -440,7 +440,7 @@ int get_group(int id,char* name,int bufflen)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -502,7 +502,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -566,7 +566,7 @@ char* enumerate_name(int id)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(NULL);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
@@ -631,7 +631,7 @@ char* enumerate_group(int id)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_STREAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
     if( clisckt == -1 ) return(NULL);
 
     memset(&address, 0, sizeof(struct sockaddr_un));

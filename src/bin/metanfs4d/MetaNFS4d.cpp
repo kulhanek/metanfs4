@@ -297,7 +297,7 @@ bool init_server(int argc,char* argv[])
     }
 
     // create server socket
-    ServerSocket = socket(AF_UNIX,SOCK_STREAM,0);
+    ServerSocket = socket(AF_UNIX,SOCK_DGRAM,0);
     if( ServerSocket < 0 ){
         syslog(LOG_ERR,"unable to create socket");
         return(false);
