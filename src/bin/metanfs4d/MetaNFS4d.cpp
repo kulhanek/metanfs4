@@ -55,6 +55,7 @@ int             BaseID          = 5000000;
 int             TopNameID       = 0;
 int             TopGroupID      = 0;
 int             ServerSocket    = -1;
+int             QueueLen        = 65535;
 CSmallString    NOBODY;
 CSmallString    NOGROUP;
 int             NobodyID        = -1;
@@ -152,15 +153,20 @@ bool init_server(int argc,char* argv[])
         syslog(LOG_INFO,"unable to read the 'local' domain from the configuration file %s",CONFIG);
         return(false);
     }
-    syslog(LOG_INFO,"local domain: %s",(const char*)LOCALDOMAIN);
+    syslog(LOG_INFO,"local domain (local): %s",(const char*)LOCALDOMAIN);
     
-    
+     
     // optional setup
+    config.GetIntegerByKey("queuelen",QueueLen);
     NOBODY = "nobody";
-    config.GetStringByKey("nobody",NOBODY);
+    config.GetStringByKey("nobody",NOBODY);  
     NOGROUP = "nogroup";
-    config.GetStringByKey("nogroup",NOGROUP);
+    config.GetStringByKey("nogroup",NOGROUP);  
+    
     config.GetIntegerByKey("base",BaseID);
+    
+    syslog(LOG_INFO,"queue length: %d",QueueLen);    
+    syslog(LOG_INFO,"base ID: %d",BaseID);    
 
     if( config.OpenSection("files") == true ){
         config.GetStringByKey("cache",CacheFileName);
@@ -318,7 +324,7 @@ bool init_server(int argc,char* argv[])
     chmod(SERVERNAME,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH );
 
     // start listennig
-    if( listen(ServerSocket, 5) != 0 ) {
+    if( listen(ServerSocket, QueueLen) != 0 ) {
         syslog(LOG_ERR,"unable to listen on socket %s",SERVERNAME);
         return(false);
     }
