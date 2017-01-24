@@ -355,34 +355,11 @@ void start_main_loop(void)
 
     while( (connsckt = accept(ServerSocket,(struct sockaddr *)&address,&address_length)) > -1 ){
         // receive message
-        struct msghdr       msgh;
-        struct iovec        iov[1];
-        char                cbuf[CMSG_SPACE(sizeof(ucred))];
-        struct ucred*       cred;
         struct SNFS4Message data;
-
-        memset(&msgh,0,sizeof(msgh));
-        memset(cbuf,0,sizeof(cbuf));
         memset(&data,0,sizeof(data));
 
-        msgh.msg_name = NULL;
-        msgh.msg_namelen = 0;
-
-        msgh.msg_iov = iov;
-        msgh.msg_iovlen = 1;
-
-        iov[0].iov_base = &data;
-        iov[0].iov_len = sizeof(data);
-
-        msgh.msg_control = cbuf;
-        msgh.msg_controllen = sizeof cbuf;
-
-        // we want sender credentials
-        int passcred=1;
-        setsockopt(connsckt,SOL_SOCKET,SO_PASSCRED,(void *)&passcred,sizeof(passcred));
-
         // receive data --------------------------
-        if( recvmsg(connsckt,&msgh,0) == -1 ){
+        if( read(connsckt,&data,sizeof(data)) != sizeof(data) ){
             syslog(LOG_ERR,"unable to receive message");
         }
         
@@ -396,19 +373,14 @@ void start_main_loop(void)
                 case MSG_IDMAP_NAME_TO_ID:{
                     // check if sender is root
                     bool authorized = false;
-                    struct cmsghdr *cmsg=NULL;
-                    cmsg=CMSG_FIRSTHDR(&msgh);
-                    while( cmsg != NULL ){
-                        if( cmsg->cmsg_type == SCM_CREDENTIALS ){
-                            cred = (struct ucred*)CMSG_DATA(cmsg);
-                            if( cred != NULL ){
-                                if( cred->uid == 0 ){
-                                    authorized = true;
-                                }
-                            }
-                        }
-                        cmsg = CMSG_NXTHDR(&msgh,cmsg);
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }  
                     }
+                    
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
                         data.Type = MSG_UNAUTHORIZED;
@@ -451,19 +423,14 @@ void start_main_loop(void)
                 case MSG_IDMAP_ID_TO_NAME:{
                     // check if sender is root
                     bool authorized = false;
-                    struct cmsghdr *cmsg=NULL;
-                    cmsg=CMSG_FIRSTHDR(&msgh);
-                    while( cmsg != NULL ){
-                        if( cmsg->cmsg_type == SCM_CREDENTIALS ){
-                            cred = (struct ucred*)CMSG_DATA(cmsg);
-                            if( cred != NULL ){
-                                if( cred->uid == 0 ){
-                                    authorized = true;
-                                }
-                            }
-                        }
-                        cmsg = CMSG_NXTHDR(&msgh,cmsg);
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }  
                     }
+
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
                         data.Type = MSG_UNAUTHORIZED;
@@ -487,18 +454,12 @@ void start_main_loop(void)
                 case MSG_IDMAP_GROUP_TO_ID:{
                     // check if sender is root
                     bool authorized = false;
-                    struct cmsghdr *cmsg=NULL;
-                    cmsg=CMSG_FIRSTHDR(&msgh);
-                    while( cmsg != NULL ){
-                        if( cmsg->cmsg_type == SCM_CREDENTIALS ){
-                            cred = (struct ucred*)CMSG_DATA(cmsg);
-                            if( cred != NULL ){
-                                if( cred->uid == 0 ){
-                                    authorized = true;
-                                }
-                            }
-                        }
-                        cmsg = CMSG_NXTHDR(&msgh,cmsg);
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }  
                     }
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
@@ -540,18 +501,12 @@ void start_main_loop(void)
                 case MSG_IDMAP_ID_TO_GROUP:{
                     // check if sender is root
                     bool authorized = false;
-                    struct cmsghdr *cmsg=NULL;
-                    cmsg=CMSG_FIRSTHDR(&msgh);
-                    while( cmsg != NULL ){
-                        if( cmsg->cmsg_type == SCM_CREDENTIALS ){
-                            cred = (struct ucred*)CMSG_DATA(cmsg);
-                            if( cred != NULL ){
-                                if( cred->uid == 0 ){
-                                    authorized = true;
-                                }
-                            }
-                        }
-                        cmsg = CMSG_NXTHDR(&msgh,cmsg);
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }  
                     }
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
@@ -713,22 +668,8 @@ void start_main_loop(void)
             syslog(LOG_INFO,"response: type(%d), id(%d), name(%s)",data.Type,data.ID,data.Name);
         }        
 
-        memset(&msgh,0,sizeof(msgh));
-
-        msgh.msg_name = NULL;
-        msgh.msg_namelen = 0;
-
-        msgh.msg_iov = iov;
-        msgh.msg_iovlen = 1;
-
-        iov[0].iov_base = &data;
-        iov[0].iov_len = sizeof(data);
-
-        msgh.msg_control = NULL;
-        msgh.msg_controllen = 0;
-
         // send response -------------------------
-        if( sendmsg(connsckt,&msgh,0) == -1 ){
+        if( write(connsckt,&data,sizeof(data)) != sizeof(data) ){
             syslog(LOG_ERR,"unable to send message");
         }
 
