@@ -66,14 +66,22 @@ int name_to_gid(char *name, uid_t *gid)
 
 int uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 {
-    return(idmap_get_name(uid,name,len));        
+    struct passwd *p_pwd = getpwuid(uid);
+    if( p_pwd != NULL ){
+        if( idmap_to_local(p_pwd->pw_name,name,len) == 0 ) return(0);        
+    }     
+    return(-ENOENT);     
 }
 
 /* -------------------------------------------------------------------------- */
 
 int gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 {
-    return(idmap_get_group(gid,name,len));
+    struct group *p_grp = getgrgid(gid);
+    if( p_grp != NULL ){
+        if( idmap_to_local(p_grp->gr_name,name,len) == 0 ) return(0);
+    }   
+    return(-ENOENT);
 }
 
 /* -----------------------------------------------------------------------------

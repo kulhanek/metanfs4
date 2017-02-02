@@ -42,19 +42,18 @@
 /* messages */
 #define MSG_UNAUTHORIZED        0
 
-#define MSG_IDMAP_NAME_TO_ID    1
-#define MSG_IDMAP_ID_TO_NAME    2
-#define MSG_NAME_TO_ID          3
-#define MSG_ID_TO_NAME          4
+#define MSG_IDMAP_REG_NAME      1           // registr name if not local, remove local REALM if present
+#define MSG_IDMAP_REG_GROUP     2           // registr group if not local, remove local REALM if present
+#define MSG_IDMAP_TO_LOCAL      3           // add local REALM if necessary  
 
-#define MSG_IDMAP_GROUP_TO_ID   5
-#define MSG_IDMAP_ID_TO_GROUP   6
-#define MSG_GROUP_TO_ID         7
-#define MSG_ID_TO_GROUP         8
+#define MSG_NAME_TO_ID          4
+#define MSG_ID_TO_NAME          5
+#define MSG_GROUP_TO_ID         6
+#define MSG_ID_TO_GROUP         7
 
-#define MSG_ENUM_NAME           9
-#define MSG_ENUM_GROUP         10
-#define MSG_GROUP_MEMBER       11
+#define MSG_ENUM_NAME           8
+#define MSG_ENUM_GROUP          9
+#define MSG_GROUP_MEMBER       10
 
 /* message structure */
 struct SNFS4Message {
@@ -67,8 +66,7 @@ struct SNFS4Message {
 /* idmap */
 int idmap_get_uid(const char* name);
 int idmap_get_gid(const char* name);
-int idmap_get_name(int id,char* name,int len);
-int idmap_get_group(int id,char* name,int len);
+int idmap_to_local(const char* name,char* lname,int len);
 
 /* nsswitch */
 int get_uid(const char* name);

@@ -297,7 +297,7 @@ bool init_server(int argc,char* argv[])
     }
 
     // create server socket
-    ServerSocket = socket(AF_UNIX,SOCK_DGRAM,0);
+    ServerSocket = socket(AF_UNIX,SOCK_SEQPACKET,0);
     if( ServerSocket < 0 ){
         syslog(LOG_ERR,"unable to create socket");
         return(false);
@@ -370,7 +370,8 @@ void start_main_loop(void)
         // process data --------------------------
         try{
             switch(data.Type){
-                case MSG_IDMAP_NAME_TO_ID:{
+                
+                case MSG_IDMAP_REG_NAME:{
                     // check if sender is root
                     bool authorized = false;
                     struct ucred cred;
@@ -389,19 +390,11 @@ void start_main_loop(void)
                     }
                     
                     // perform operation
-                    int         id = NobodyID; 
+                    int         id = 0; 
                     std::string name(data.Name);
                     std::string lname;
                     
-                    if( is_local(name,lname) ){
-                        if( ! lname.empty() ){
-                            struct passwd *p_pwd = getpwnam(lname.c_str());  // only LOCAL query!!!
-                            if( p_pwd != NULL ){
-                                id = p_pwd->pw_uid;
-                            }
-                        } 
-
-                    } else {
+                    if( ! is_local(name,lname) ){
                         // get id
                         id = NameToID[name];
                         if( id == 0 ){
@@ -415,43 +408,13 @@ void start_main_loop(void)
                     }
 
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_NAME_TO_ID;
+                    data.Type = MSG_IDMAP_REG_NAME;
                     data.ID = id;
-                }
-                break;
-                
-                case MSG_IDMAP_ID_TO_NAME:{
-                    // check if sender is root
-                    bool authorized = false;
-                    struct ucred cred;
-                    socklen_t credlen = sizeof(cred);
-                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
-                        if( cred.uid == 0 ){
-                            authorized = true;
-                         }  
-                    }
-
-                    if( authorized == false ){
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
-                        break;
-                    }
-                    
-                    struct passwd *p_pwd = getpwuid(data.ID);
-                    std::string name = std::string(NOBODY);
-                    if( p_pwd != NULL ){
-                        name = p_pwd->pw_name;
-                        map_to_local_ifnecessary(name);                        
-                    }
-
-                    memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_ID_TO_NAME;
-                    strncpy(data.Name,name.c_str(),MAX_NAME);
+                    strncpy(data.Name,lname.c_str(),MAX_NAME);
                 }
                 break;                
-                
-         
-                case MSG_IDMAP_GROUP_TO_ID:{
+                        
+                case MSG_IDMAP_REG_GROUP:{
                     // check if sender is root
                     bool authorized = false;
                     struct ucred cred;
@@ -464,22 +427,16 @@ void start_main_loop(void)
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
                         data.Type = MSG_UNAUTHORIZED;
+                        syslog(LOG_INFO,"unauthorized request");                        
                         break;
                     }
                     
                     // perform operation
-                    int id = NogroupID; 
+                    int id = 0; 
                     std::string name(data.Name);
                     std::string lname;
                     
-                    if( is_local(name,lname) ){
-                        if( ! lname.empty() ){
-                            struct group *p_grp = getgrnam(lname.c_str()); // only LOCAL query!!!
-                            if( p_grp != NULL ){
-                                id = p_grp->gr_gid;
-                            }
-                        }
-                    } else {
+                    if( ! is_local(name,lname) ){
                         // get id
                         id = GroupToID[name];
                         if( id == 0 ){
@@ -493,12 +450,13 @@ void start_main_loop(void)
                     }
 
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_GROUP_TO_ID;
+                    data.Type = MSG_IDMAP_REG_GROUP;
                     data.ID = id;
+                    strncpy(data.Name,lname.c_str(),MAX_NAME);                    
                 }
                 break;
                 
-                case MSG_IDMAP_ID_TO_GROUP:{
+                case MSG_IDMAP_TO_LOCAL:{
                     // check if sender is root
                     bool authorized = false;
                     struct ucred cred;
@@ -511,18 +469,15 @@ void start_main_loop(void)
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
                         data.Type = MSG_UNAUTHORIZED;
+                        syslog(LOG_INFO,"unauthorized request");                          
                         break;
                     }
                     
-                    struct group *p_grp = getgrgid(data.ID);
-                    std::string name = std::string(NOGROUP);
-                    if( p_grp != NULL ){
-                        name = p_grp->gr_name;
-                        map_to_local_ifnecessary(name);
-                    }
+                    std::string name(data.Name);                    
+                    map_to_local_ifnecessary(name);
                     
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_ID_TO_GROUP;
+                    data.Type = MSG_IDMAP_TO_LOCAL;
                     strncpy(data.Name,name.c_str(),MAX_NAME);
                 }
                 break;                
