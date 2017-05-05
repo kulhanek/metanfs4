@@ -56,8 +56,8 @@ int                     TopNameID       = 0;
 int                     TopGroupID      = 0;
 int                     ServerSocket    = -1;
 int                     QueueLen        = 65535;
-CSmallString            NOBODY;
-CSmallString            NOGROUP;
+CSmallString            NoBody;
+CSmallString            NoGroup;
 int                     NobodyID        = -1;
 int                     NogroupID       = -1;
 CSmallString            CacheFileName;
@@ -103,8 +103,11 @@ bool load_principal(void);
 
 // -----------------------------------------------------------------------------
 
-bool is_local(const std::string &name,std::string &lname);
-void map_to_local_ifnecessary(std::string &name);
+// test if name is from local domain
+bool is_localdomain(const std::string &name,std::string &lname);
+
+// map to local domain if not in any other domain
+void map_to_localdomain_ifnecessary(std::string &name);
 
 // is realm local
 bool is_realm_local(const std::string &princ,std::string &lname);
@@ -167,19 +170,19 @@ bool init_server(int argc,char* argv[])
 // rest of the setup -----------------------------
 
     // get nobody and nogroup
-    struct passwd* psw = getpwnam(NOBODY);
+    struct passwd* psw = getpwnam(NoBody);
     if( psw ){
         NobodyID = psw->pw_uid;
-        syslog(LOG_INFO,"%s id is %d",(const char*)NOBODY,NobodyID);
+        syslog(LOG_INFO,"%s id is %d",(const char*)NoBody,NobodyID);
     }
-    struct group* grp = getgrnam(NOGROUP);
+    struct group* grp = getgrnam(NoGroup);
     if( grp ){
         NogroupID = grp->gr_gid;
-        syslog(LOG_INFO,"%s id is %d",(const char*)NOGROUP,NogroupID);
+        syslog(LOG_INFO,"%s id is %d",(const char*)NoGroup,NogroupID);
     }
 
     // create server socket
-    ServerSocket = socket(AF_UNIX,SOCK_DGRAM,0);
+    ServerSocket = socket(AF_UNIX,SOCK_SEQPACKET,0);
     if( ServerSocket < 0 ){
         syslog(LOG_ERR,"unable to create socket");
         return(false);
@@ -239,16 +242,16 @@ bool load_config(void)
     // optional setup
     CSmallString tmp;
     tmp = NULL;
-    if( config.GetStringByKey("pricrealms2loc",tmp) == true ){
+    if( config.GetStringByKey("realms2locusers",tmp) == true ){
         std::string stmp(tmp);
         boost::split(PrincipalRealmsToLocal,stmp,boost::is_any_of(","),boost::token_compress_on);
     }
 
     if( PrincipalRealmsToLocal.size() > 0 ){
         tmp = boost::join(PrincipalRealmsToLocal,",");
-        syslog(LOG_INFO,"equivalent realms for principal mapping (pricrealms2loc): %s",(const char*)tmp);
+        syslog(LOG_INFO,"realms for principal mapping to local users (realms2locusers): %s",(const char*)tmp);
     } else {
-        syslog(LOG_INFO,"equivalent realms for principal mapping (pricrealms2loc): -disabled-");
+        syslog(LOG_INFO,"realms for principal mapping to local users (realms2locusers): -disabled-");
     }
 
     tmp = NULL;
@@ -266,15 +269,17 @@ bool load_config(void)
 
     // optional setup
     config.GetIntegerByKey("queuelen",QueueLen);
-    NOBODY = "nobody";
-    config.GetStringByKey("nobody",NOBODY);
-    NOGROUP = "nogroup";
-    config.GetStringByKey("nogroup",NOGROUP);
+    NoBody = "nobody";
+    config.GetStringByKey("nobody",NoBody);
+    NoGroup = "nogroup";
+    config.GetStringByKey("nogroup",NoGroup);
 
     config.GetIntegerByKey("base",BaseID);
 
-    syslog(LOG_INFO,"queue length: %d",QueueLen);
-    syslog(LOG_INFO,"base ID: %d",BaseID);
+    syslog(LOG_INFO,"queue length (queuelen): %d",QueueLen);
+    syslog(LOG_INFO,"base ID (base): %d",BaseID);
+    syslog(LOG_INFO,"nobody (nobody): %s",(const char*)NoBody);
+    syslog(LOG_INFO,"nogroup (nogroup): %s",(const char*)NoGroup);
 
     if( config.OpenSection("files") == true ){
         config.GetStringByKey("cache",CacheFileName);
@@ -505,7 +510,7 @@ void start_main_loop(void)
                     std::string name(data.Name);
                     std::string lname;
 
-                    if( ! is_local(name,lname) ){
+                    if( ! is_localdomain(name,lname) ){
                         // get id
                         id = NameToID[name];
                         if( id == 0 ){
@@ -547,7 +552,7 @@ void start_main_loop(void)
                     std::string name(data.Name);
                     std::string lname;
 
-                    if( ! is_local(name,lname) ){
+                    if( ! is_localdomain(name,lname) ){
                         // get id
                         id = GroupToID[name];
                         if( id == 0 ){
@@ -567,7 +572,7 @@ void start_main_loop(void)
                 }
                 break;
 
-                case MSG_IDMAP_TO_LOCAL:{
+                case MSG_IDMAP_TO_LOCAL_DOMAIN:{
                     // check if sender is root
                     bool authorized = false;
                     struct ucred cred;
@@ -585,10 +590,10 @@ void start_main_loop(void)
                     }
 
                     std::string name(data.Name);
-                    map_to_local_ifnecessary(name);
+                    map_to_localdomain_ifnecessary(name);
 
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_TO_LOCAL;
+                    data.Type = MSG_IDMAP_TO_LOCAL_DOMAIN;
                     strncpy(data.Name,name.c_str(),MAX_NAME);
                 }
                 break;
@@ -620,7 +625,7 @@ void start_main_loop(void)
                 
                 case MSG_ID_TO_NAME:{
                     if( data.ID == NobodyID ){
-                        strncpy(data.Name,NOBODY,MAX_NAME);
+                        strncpy(data.Name,NoBody,MAX_NAME);
                     } else {
                         // get relevant data
                         int id = data.ID - BaseID;
@@ -642,7 +647,7 @@ void start_main_loop(void)
                     // prepare response
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_NAME_TO_ID;
-                    if( name != "NOBODY" ){
+                    if( name != "NoBody" ){
                         int id = NameToID[name];
                         if( id > 0 ) {
                             data.ID = id + BaseID;
@@ -657,7 +662,7 @@ void start_main_loop(void)
 
                 case MSG_ID_TO_GROUP:{
                     if( data.ID == NogroupID ){
-                        strncpy(data.Name,NOGROUP,MAX_NAME);
+                        strncpy(data.Name,NoGroup,MAX_NAME);
                     } else {
                         // get relevant data
                         int id = data.ID - BaseID;
@@ -679,7 +684,7 @@ void start_main_loop(void)
                     // prepare response
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_GROUP_TO_ID;
-                    if( name != "NOGROUP" ){
+                    if( name != "NoGroup" ){
                         int id = GroupToID[name];
                         if( id > 0 ) {
                             data.ID = id + BaseID;
@@ -819,7 +824,7 @@ void catch_signals(int signo)
 
 // -----------------------------------------------------------------------------
 
-bool is_local(const std::string &name,std::string &lname)
+bool is_localdomain(const std::string &name,std::string &lname)
 {
     std::vector<std::string> bufs;
     boost::split(bufs,name,boost::is_any_of("@"));
@@ -829,6 +834,15 @@ bool is_local(const std::string &name,std::string &lname)
     lname = bufs[0];
     if( (bufs.size() == 2) && (bufs[1] == std::string(LocalDomain)) ) return(true);
     return(false);
+}
+
+// -----------------------------------------------------------------------------
+
+void map_to_localdomain_ifnecessary(std::string &name)
+{
+    if( name.find("@") == std::string::npos ){
+        name = name + std::string("@") + std::string(LocalDomain);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -846,15 +860,6 @@ bool is_realm_local(const std::string &princ,std::string &lname)
     // return name
     lname = bufs[0];
     return(true);
-}
-
-// -----------------------------------------------------------------------------
-
-void map_to_local_ifnecessary(std::string &name)
-{
-    if( name.find("@") == std::string::npos ){
-        name = name + std::string("@") + std::string(LocalDomain);
-    }
 }
 
 // -----------------------------------------------------------------------------

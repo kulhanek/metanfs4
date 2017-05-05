@@ -122,7 +122,7 @@ int idmap_get_uid(const char* name)
     }
     
     // ask for NOBODY
-    return(get_gid("NOBODY"));
+    return(get_uid("NOBODY"));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -201,7 +201,7 @@ int idmap_to_local(const char* name, char* lname, int len)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
 
     memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_TO_LOCAL;
+    data.Type = MSG_IDMAP_TO_LOCAL_DOMAIN;
     strncpy(data.Name,name,MAX_NAME);
 
     if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
@@ -216,7 +216,7 @@ int idmap_to_local(const char* name, char* lname, int len)
         return(-ENOENT);
     }
 
-    if( data.Type != MSG_IDMAP_TO_LOCAL ) {
+    if( data.Type != MSG_IDMAP_TO_LOCAL_DOMAIN ) {
         close(clisckt);
         return(-ENOENT);
     }
