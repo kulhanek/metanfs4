@@ -20,7 +20,7 @@ int idmap_get_princ_uid(const char* name)
     struct SNFS4Message data;
     int addrlen;
 
-    int clisckt = socket(AF_UNIX,SOCK_DGRAM,0);
+    int clisckt = socket(AF_UNIX,SOCK_SEQPACKET,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
