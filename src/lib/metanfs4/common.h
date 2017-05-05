@@ -56,6 +56,8 @@
 #define MSG_ENUM_GROUP         10
 #define MSG_GROUP_MEMBER       11
 
+#define MSG_IDMAP_PRINC_TO_ID  12
+
 /* message structure */
 struct SNFS4Message {
     int     Type;
@@ -69,6 +71,7 @@ int idmap_get_uid(const char* name);
 int idmap_get_gid(const char* name);
 int idmap_get_name(int id,char* name,int len);
 int idmap_get_group(int id,char* name,int len);
+int idmap_get_princ_uid(const char* name);
 
 /* nsswitch */
 int get_uid(const char* name);
