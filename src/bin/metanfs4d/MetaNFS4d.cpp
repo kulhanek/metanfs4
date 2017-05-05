@@ -51,26 +51,35 @@
 
 // -----------------------------------------------------------------------------
 // global data
-int             BaseID          = 5000000;
-int             TopNameID       = 0;
-int             TopGroupID      = 0;
-int             ServerSocket    = -1;
-int             QueueLen        = 65535;
-CSmallString    NOBODY;
-CSmallString    NOGROUP;
-int             NobodyID        = -1;
-int             NogroupID       = -1;
-CSmallString    CacheFileName;
-CSmallString    GroupFileName;
-CSmallString    LOCALDOMAIN;
-bool            Verbose = false;
+int                     BaseID          = 5000000;
+int                     TopNameID       = 0;
+int                     TopGroupID      = 0;
+int                     ServerSocket    = -1;
+int                     QueueLen        = 65535;
+CSmallString            NOBODY;
+CSmallString            NOGROUP;
+int                     NobodyID        = -1;
+int                     NogroupID       = -1;
+CSmallString            CacheFileName;
+CSmallString            GroupFileName;
+CSmallString            LocalDomain;                // always removed
+bool                    Verbose = false;
+
+// principal mappings
+CSmallString                        PrincipalToLocalNameFileName;
+std::map<std::string,std::string>   PrincipalToLocalName;
+std::set<std::string>               PrincipalRealmsToLocal;
 
 // data storages
 std::map<std::string,int> NameToID;
 std::map<int,std::string> IDToName;
 std::map<std::string,int> GroupToID;
 std::map<int,std::string> IDToGroup;
-std::map<std::string, std::set<std::string> > GroupMembers;
+
+// conditional mapping to the local users for GroupMembers
+std::set<std::string>                           DomainsToMapToLocalUser;
+// group members
+std::map<std::string, std::set<std::string> >   GroupMembers;
 
 
 // -----------------------------------------------------------------------------
@@ -86,10 +95,22 @@ void start_main_loop(void);
 // signal handler
 void catch_signals(int signo);
 
+// load config and files
+bool load_config(void);
+bool load_cache(bool skip);
+bool load_group(void);
+bool load_principal(void);
+
 // -----------------------------------------------------------------------------
 
 bool is_local(const std::string &name,std::string &lname);
 void map_to_local_ifnecessary(std::string &name);
+
+// is realm local
+bool is_realm_local(const std::string &princ,std::string &lname);
+
+// conditional mapping of user to local accounts
+bool can_user_be_local(const std::string &name,std::string &lname);
 
 // -----------------------------------------------------------------------------
 
@@ -137,150 +158,11 @@ bool init_server(int argc,char* argv[])
     signal(SIGINT, catch_signals);
     signal(SIGTERM, catch_signals);
     
-// load config -----------------------------------
-    CPrmFile config;
-    if( config.Read(CONFIG) == false ){
-        syslog(LOG_INFO,"unable to parse the config file %s",CONFIG);
-        return(false);
-    }
-    
-    if( config.OpenSection("config") == false ){
-        syslog(LOG_INFO,"unable to open the 'config' section in the configuration file %s",CONFIG);
-        return(false);
-    }
-    
-    if( config.GetStringByKey("local",LOCALDOMAIN) == false ){
-        syslog(LOG_INFO,"unable to read the 'local' domain from the configuration file %s",CONFIG);
-        return(false);
-    }
-    syslog(LOG_INFO,"local domain (local): %s",(const char*)LOCALDOMAIN);
-    
-     
-    // optional setup
-    config.GetIntegerByKey("queuelen",QueueLen);
-    NOBODY = "nobody";
-    config.GetStringByKey("nobody",NOBODY);  
-    NOGROUP = "nogroup";
-    config.GetStringByKey("nogroup",NOGROUP);  
-    
-    config.GetIntegerByKey("base",BaseID);
-    
-    syslog(LOG_INFO,"queue length: %d",QueueLen);    
-    syslog(LOG_INFO,"base ID: %d",BaseID);    
-
-    if( config.OpenSection("files") == true ){
-        config.GetStringByKey("cache",CacheFileName);
-        config.GetStringByKey("group",GroupFileName);
-    }   
-    
-// load cache if present
-    if( (CacheFileName != NULL) && (options.GetOptSkipCache() == false) ){ 
-        
-        syslog(LOG_INFO,"cache file: %s",(const char*)CacheFileName);        
-        
-        struct stat cstat;
-        if( stat(CacheFileName,&cstat) != 0 ){
-            syslog(LOG_INFO,"ignore cache - unable to stat the cache file %s",(const char*)CacheFileName);          
-        } else {
-            if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-                syslog(LOG_INFO,"wrong access rights on the cache file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)CacheFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
-                return(false);
-            }
-            
-            std::ifstream fin;
-            fin.open(CacheFileName);
-            int num = 0;
-            while( fin ){
-                char        type = '-';
-                std::string name;
-                int         nid = -1;
-                fin >> type >> name >> nid;
-                if( (fin) && (type == 'n') ){
-                    NameToID[name] = nid;
-                    IDToName[nid] = name;  
-                    if( TopNameID < nid ){
-                        TopNameID = nid;
-                    }
-                    num++;
-                }
-                if( (fin) && (type == 'g') ){
-                    GroupToID[name] = nid;
-                    IDToGroup[nid] = name;                
-                    if( TopGroupID < nid ){
-                        TopGroupID = nid;
-                    }
-                    num++;                
-                }
-            }
-            syslog(LOG_INFO,"cached items: %d",num);
-            fin.close();
-        }
-    }
-
-// load group if present
-    if( GroupFileName != NULL ){ 
-        
-        syslog(LOG_INFO,"group file: %s",(const char*)GroupFileName);
-        
-        struct stat cstat;
-        if( stat(GroupFileName,&cstat) != 0 ){
-            syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
-            return(false);            
-        }
-        if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-            syslog(LOG_INFO,"wrong access rights on the group file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)GroupFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
-            return(false);
-        }
-        
-        std::ifstream fin;
-        fin.open(GroupFileName);
-        int unum = 0;
-        int gnum = 0;
-        int uinum = 0;
-        int ginum = 0;           
-        std::string line;        
-        while( getline(fin,line) ){
-            std::vector<std::string> strs;
-            boost::split(strs,line,boost::is_any_of(":"));
-            if( strs.size() == 4 ){
-                std::string gname = strs[0];
-                if( gname.find("@") != std::string::npos ){
-                    if( GroupToID.count(gname) == 0 ){
-                        TopGroupID++;
-                        GroupToID[gname] = TopGroupID;
-                        IDToGroup[TopGroupID] = gname; 
-                        gnum++;
-                    } else {
-                        ginum++;
-                    }
-                    std::vector<std::string> usrs;  
-                    boost::split(usrs,strs[3],boost::is_any_of(","));                    
-                    std::vector<std::string>::iterator it = usrs.begin();
-                    std::vector<std::string>::iterator ie = usrs.end();
-                    while( it != ie ){
-                        std::string uname = *it;
-                        if( uname.find("@") != std::string::npos ){
-                            if( NameToID.count(uname) == 0 ){
-                                TopNameID++;
-                                NameToID[uname] = TopNameID;
-                                IDToName[TopNameID] = uname;
-                                GroupMembers[gname].insert(uname);
-                                unum++;
-                            } else {
-                                uinum++; 
-                                GroupMembers[gname].insert(uname);                                
-                            }
-                        }
-                        it++;
-                    }
-                    
-                }
-            }
-        }
-        syslog(LOG_INFO,"group items (users/groups): %d/%d",unum,gnum);
-        syslog(LOG_INFO,"group items already read from cache (users/groups): %d/%d",uinum,ginum);        
-        fin.close(); 
-    }
+// load configuration and data -------------------
+    if( load_config() == false ) return(false);
+    if( load_cache(options.GetOptSkipCache()) == false ) return(false);
+    if( load_group() == false ) return(false);
+    if( load_principal() == false ) return(false);
     
 // rest of the setup -----------------------------
 
@@ -330,6 +212,235 @@ bool init_server(int argc,char* argv[])
     }
 
     return(true);
+}
+
+// -----------------------------------------------------------------------------
+
+bool load_config(void)
+{
+// load config -----------------------------------
+    CPrmFile config;
+    if( config.Read(CONFIG) == false ){
+        syslog(LOG_INFO,"unable to parse the config file %s",CONFIG);
+        return(false);
+    }
+
+    if( config.OpenSection("config") == false ){
+        syslog(LOG_INFO,"unable to open the 'config' section in the configuration file %s",CONFIG);
+        return(false);
+    }
+
+    if( config.GetStringByKey("local",LocalDomain) == false ){
+        syslog(LOG_INFO,"unable to read the 'local' domain from the configuration file %s",CONFIG);
+        return(false);
+    }
+    syslog(LOG_INFO,"local domain (local): %s",(const char*)LocalDomain);
+
+    // optional setup
+    CSmallString tmp;
+    tmp = NULL;
+    if( config.GetStringByKey("pricrealms2loc",tmp) == true ){
+        std::string stmp(tmp);
+        boost::split(PrincipalRealmsToLocal,stmp,boost::is_any_of(","),boost::token_compress_on);
+    }
+
+    if( PrincipalRealmsToLocal.size() > 0 ){
+        tmp = boost::join(PrincipalRealmsToLocal,",");
+        syslog(LOG_INFO,"equivalent realms for principal mapping (pricrealms2loc): %s",(const char*)tmp);
+    } else {
+        syslog(LOG_INFO,"equivalent realms for principal mapping (pricrealms2loc): -disabled-");
+    }
+
+    tmp = NULL;
+    if( config.GetStringByKey("domains2locusers",tmp) == true ){
+        std::string stmp(tmp);
+        boost::split(DomainsToMapToLocalUser,stmp,boost::is_any_of(","),boost::token_compress_on);
+    }
+
+    if( DomainsToMapToLocalUser.size() > 0 ){
+        tmp = boost::join(DomainsToMapToLocalUser,",");
+        syslog(LOG_INFO,"domains to conditionally map to local users (domains2locusers): %s",(const char*)tmp);
+    } else {
+        syslog(LOG_INFO,"domains to conditionally map to local users (domains2locusers): -disabled-");
+    }
+
+    // optional setup
+    config.GetIntegerByKey("queuelen",QueueLen);
+    NOBODY = "nobody";
+    config.GetStringByKey("nobody",NOBODY);
+    NOGROUP = "nogroup";
+    config.GetStringByKey("nogroup",NOGROUP);
+
+    config.GetIntegerByKey("base",BaseID);
+
+    syslog(LOG_INFO,"queue length: %d",QueueLen);
+    syslog(LOG_INFO,"base ID: %d",BaseID);
+
+    if( config.OpenSection("files") == true ){
+        config.GetStringByKey("cache",CacheFileName);
+        config.GetStringByKey("group",GroupFileName);
+        config.GetStringByKey("principal",PrincipalToLocalNameFileName);
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+bool load_cache(bool skip)
+{
+// load cache if present and allowed
+    if( CacheFileName == NULL ) return(true);
+    if( skip == true ) return(true);
+
+    syslog(LOG_INFO,"cache file: %s",(const char*)CacheFileName);
+
+    struct stat cstat;
+    if( stat(CacheFileName,&cstat) != 0 ){
+        syslog(LOG_INFO,"ignore cache - unable to stat the cache file %s",(const char*)CacheFileName);
+    } else {
+        if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
+            syslog(LOG_INFO,"wrong access rights on the cache file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)CacheFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+            return(false);
+        }
+
+        std::ifstream fin;
+        fin.open(CacheFileName);
+        int num = 0;
+        while( fin ){
+            char        type = '-';
+            std::string name;
+            int         nid = -1;
+            fin >> type >> name >> nid;
+            if( (fin) && (type == 'n') ){
+                NameToID[name] = nid;
+                IDToName[nid] = name;
+                if( TopNameID < nid ){
+                    TopNameID = nid;
+                }
+                num++;
+            }
+            if( (fin) && (type == 'g') ){
+                GroupToID[name] = nid;
+                IDToGroup[nid] = name;
+                if( TopGroupID < nid ){
+                    TopGroupID = nid;
+                }
+                num++;
+            }
+        }
+        syslog(LOG_INFO,"cached items: %d",num);
+        fin.close();
+    }
+}
+
+// -----------------------------------------------------------------------------
+
+bool load_group(void)
+{
+// load group if present
+    if( GroupFileName == NULL ) return(true);
+
+    syslog(LOG_INFO,"group file: %s",(const char*)GroupFileName);
+
+    struct stat cstat;
+    if( stat(GroupFileName,&cstat) != 0 ){
+        syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
+        return(false);
+    }
+    if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
+        syslog(LOG_INFO,"wrong access rights on the group file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)GroupFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+        return(false);
+    }
+
+    std::ifstream fin;
+    fin.open(GroupFileName);
+    int unum = 0;
+    int gnum = 0;
+    int uinum = 0;
+    int ginum = 0;
+    std::string line;
+    while( getline(fin,line) ){
+        std::vector<std::string> strs;
+        boost::split(strs,line,boost::is_any_of(":"));
+        if( strs.size() == 4 ){
+            std::string gname = strs[0];
+            if( gname.find("@") != std::string::npos ){
+                if( GroupToID.count(gname) == 0 ){
+                    TopGroupID++;
+                    GroupToID[gname] = TopGroupID;
+                    IDToGroup[TopGroupID] = gname;
+                    gnum++;
+                } else {
+                    ginum++;
+                }
+                std::vector<std::string> usrs;
+                boost::split(usrs,strs[3],boost::is_any_of(","));
+                std::vector<std::string>::iterator it = usrs.begin();
+                std::vector<std::string>::iterator ie = usrs.end();
+                while( it != ie ){
+                    std::string uname = *it;
+                    if( uname.find("@") != std::string::npos ){
+                        if( NameToID.count(uname) == 0 ){
+                            TopNameID++;
+                            NameToID[uname] = TopNameID;
+                            IDToName[TopNameID] = uname;
+                            unum++;
+                        } else {
+                            uinum++;
+                        }
+                        // add user with domain
+                        GroupMembers[gname].insert(uname);
+                        // and again if it can be mapped to local account and the mapping is allowed
+                        // this is important for proper function of rsync with --chown or --groupmap
+                        // RT#202411
+                        std::string lname;
+                        if( can_user_be_local(uname,lname) == true ){
+                            GroupMembers[gname].insert(lname);
+                        }
+                    }
+                    it++;
+                }
+
+            }
+        }
+    }
+    syslog(LOG_INFO,"group items (users/groups): %d/%d",unum,gnum);
+    syslog(LOG_INFO,"group items already read from cache (users/groups): %d/%d",uinum,ginum);
+    fin.close();
+}
+
+// -----------------------------------------------------------------------------
+
+bool load_principal(void)
+{
+// load group if present
+    if( PrincipalToLocalNameFileName == NULL ) return(true);
+
+    syslog(LOG_INFO,"principal file: %s",(const char*)PrincipalToLocalNameFileName);
+
+    struct stat cstat;
+    if( stat(GroupFileName,&cstat) != 0 ){
+        syslog(LOG_INFO,"unable to stat the principal file %s",(const char*)PrincipalToLocalNameFileName);
+        return(false);
+    }
+    if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
+        syslog(LOG_INFO,"wrong access rights on the principal file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)PrincipalToLocalNameFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+        return(false);
+    }
+
+    std::ifstream fin;
+    fin.open(PrincipalToLocalNameFileName);
+    int unum = 0;
+    std::string line;
+    while( getline(fin,line) ){
+        std::vector<std::string> strs;
+        boost::split(strs,line,boost::is_any_of(":"));
+        if( strs.size() == 2 ){
+            PrincipalToLocalName[strs[0]] = strs[1];
+        }
+    }
+
+    syslog(LOG_INFO,"principal items (principal:local): %d",unum);
+    fin.close();
 }
 
 // -----------------------------------------------------------------------------
@@ -416,6 +527,31 @@ void start_main_loop(void)
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_NAME_TO_ID;
+                    data.ID = id;
+                }
+                break;
+
+                case MSG_IDMAP_PRINC_TO_ID:{
+                    // perform operation
+                    std::string name(data.Name);
+                    std::string lname;
+
+                    if( PrincipalToLocalName.count(name) == 1 ){
+                        lname = PrincipalToLocalName[name];
+                    } else {
+                        is_realm_local(name,lname);
+                    }
+                    int id = -1;
+
+                    if( (! lname.empty()) && (lname.find("@") == std::string::npos) ){
+                        struct passwd *p_pwd = getpwnam(lname.c_str());  // only LOCAL query!!!
+                        if( p_pwd != NULL ){
+                            id = p_pwd->pw_uid;
+                        }
+                    }
+
+                    memset(&data,0,sizeof(data));
+                    data.Type = MSG_IDMAP_PRINC_TO_ID;
                     data.ID = id;
                 }
                 break;
@@ -736,8 +872,25 @@ bool is_local(const std::string &name,std::string &lname)
     lname = name;
     if( bufs.size() <= 1 ) return(true);
     lname = bufs[0];
-    if( (bufs.size() == 2) && (bufs[1] == std::string(LOCALDOMAIN)) ) return(true); 
+    if( (bufs.size() == 2) && (bufs[1] == std::string(LocalDomain)) ) return(true);
     return(false);
+}
+
+// -----------------------------------------------------------------------------
+
+bool is_realm_local(const std::string &princ,std::string &lname)
+{
+    std::vector<std::string> bufs;
+    boost::split(bufs,princ,boost::is_any_of("@"));
+
+    lname = "";
+    if( bufs.size() != 2 ) return(false); // the princ has to contain realm
+
+    if( PrincipalRealmsToLocal.count(bufs[1]) == 0 ) return(false); // realm is not allowed to be mapped to local user
+
+    // return name
+    lname = bufs[0];
+    return(true);
 }
 
 // -----------------------------------------------------------------------------
@@ -745,8 +898,28 @@ bool is_local(const std::string &name,std::string &lname)
 void map_to_local_ifnecessary(std::string &name)
 {
     if( name.find("@") == std::string::npos ){
-        name = name + std::string("@") + std::string(LOCALDOMAIN);
+        name = name + std::string("@") + std::string(LocalDomain);
     }
+}
+
+// -----------------------------------------------------------------------------
+
+bool can_user_be_local(const std::string &name,std::string &lname)
+{
+    std::vector<std::string> bufs;
+    boost::split(bufs,name,boost::is_any_of("@"));
+
+    lname = name;
+    if( bufs.size() != 2 ) return(false); // the name has to contain domain
+
+    if( DomainsToMapToLocalUser.count(bufs[1]) == 0 ) return(false); // domain is not allowed to be mapped to local user
+
+    // try to determine if the local user exist
+    struct passwd* p_pw = getpwnam(bufs[0].c_str());
+    if( p_pw == NULL ) return(false);
+
+    lname = bufs[0];
+    return(true);
 }
 
 // -----------------------------------------------------------------------------
