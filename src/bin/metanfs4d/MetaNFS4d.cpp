@@ -255,6 +255,7 @@ bool init_server(int argc,char* argv[])
 bool load_config(void)
 {
 // load config -----------------------------------
+    syslog(LOG_INFO,"loading config file: %s",CONFIG);
     CPrmFile config;
     if( config.Read(CONFIG) == false ){
         syslog(LOG_INFO,"unable to parse the config file %s",CONFIG);
@@ -264,7 +265,7 @@ bool load_config(void)
     CSmallString tmp;
 
 // [setup]
-    syslog(LOG_INFO,"[setup]");
+    syslog(LOG_INFO,"\n[setup]");
 
     if( config.OpenSection("setup") == true ){
         // all is optional setup
@@ -282,7 +283,7 @@ bool load_config(void)
     syslog(LOG_INFO,"primary group (PrimaryGroup): %s",PrimaryGroup.c_str());
 
 // [local]
-    syslog(LOG_INFO,"[local]");
+    syslog(LOG_INFO,"\n[local]");
 
     if( config.OpenSection("local") == false ){
         syslog(LOG_INFO,"unable to open the [local] section in the configuration file %s",CONFIG);
@@ -311,7 +312,7 @@ bool load_config(void)
     }
 
 // [group]
-    syslog(LOG_INFO,"[setup]");
+    syslog(LOG_INFO,"\n[group]");
 
     if( config.OpenSection("group") == true ){
         config.GetStringByKey("Name",GroupFileName);
@@ -332,12 +333,15 @@ bool load_config(void)
     }
 
 // [cache]
-    syslog(LOG_INFO,"[cache]");
+    syslog(LOG_INFO,"\n[cache]");
+
     if( config.OpenSection("cache") == true ){
         config.GetStringByKey("Name",CacheFileName);
     }
 
-    syslog(LOG_INFO,"cache file name (Name): %s",(const char*)GroupFileName);
+    syslog(LOG_INFO,"cache file name (Name): %s",(const char*)CacheFileName);
+
+    syslog(LOG_INFO,"\n");
 }
 
 // -----------------------------------------------------------------------------
@@ -908,7 +912,7 @@ int GetOrRegisterGroup(const std::string& name)
         TopGroupID++;
         GroupToID[name] = TopGroupID;
         IDToGroup[TopGroupID] = name;
-        return(TopGroupID);
+        return(TopGroupID+BaseID);
     }
     // try local account
     struct group * p_gr = getgrnam(name.c_str());
