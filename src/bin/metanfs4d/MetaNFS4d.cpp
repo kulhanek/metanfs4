@@ -181,8 +181,7 @@ bool init_server(int argc,char* argv[])
 {
     // open syslog
     openlog("metanfs4d",LOG_PID,LOG_DAEMON);
-    syslog(LOG_INFO,"-------------------------------------------------------------------------------");
-    syslog(LOG_INFO,"starting server");    
+    syslog(LOG_INFO,"==== starting server ====");
     
 // setup options ---------------------------------
     CMetaNFS4dOptions options;
@@ -258,6 +257,8 @@ bool load_config(void)
 {
 // load config -----------------------------------
     syslog(LOG_INFO,"loading config file: %s",CONFIG);
+    syslog(LOG_INFO,"-------------------------------------------------------------------------------");
+
     CPrmFile config;
     if( config.Read(CONFIG) == false ){
         syslog(LOG_INFO,"unable to parse the config file %s",CONFIG);
@@ -342,6 +343,8 @@ bool load_config(void)
     }
 
     syslog(LOG_INFO,"cache file name (Name): %s",(const char*)CacheFileName);
+
+    syslog(LOG_INFO,"-------------------------------------------------------------------------------");
 }
 
 // -----------------------------------------------------------------------------
