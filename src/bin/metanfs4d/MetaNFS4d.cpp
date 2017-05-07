@@ -677,15 +677,15 @@ void start_main_loop(void)
                     // prepare response
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_NAME_TO_ID;
-                    if( name != "NoBody" ){
+                    if( name == "NOBODY" ){
+                        data.ID = NobodyID;
+                    } else {
                         int id = UserToID[name];
                         if( id > 0 ) {
                             data.ID = id + BaseID;
                         } else {
                             data.ID = -1;
                         }
-                    } else {
-                        data.ID = NobodyID;                        
                     }
                 }
                 break;
@@ -714,15 +714,17 @@ void start_main_loop(void)
                     // prepare response
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_GROUP_TO_ID;
-                    if( name != "NoGroup" ){
+                    if( name == "NOGROUP" ){
+                        data.ID = NoGroupID;
+                    } else if( name == "METANFS4" ) {
+                        data.ID = PrimaryGroupID;
+                    } else {
                         int id = GroupToID[name];
                         if( id > 0 ) {
                             data.ID = id + BaseID;
                         } else {
                             data.ID = -1;
                         }
-                    } else {
-                        data.ID = NoGroupID;
                     }
                 }
                 break;

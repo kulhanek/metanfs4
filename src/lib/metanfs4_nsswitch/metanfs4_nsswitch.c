@@ -110,7 +110,7 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
         return(NSS_STATUS_NOTFOUND);
     }
 
-    gid = get_gid("NOGROUP");
+    gid = get_gid("METANFS4");
     if( gid <= 0 ){
         gid = -1;
     }
@@ -152,7 +152,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
         return(NSS_STATUS_NOTFOUND);
     }
     
-    gid = get_gid("NOGROUP");
+    gid = get_gid("METANFS4");
     if( gid <= 0 ){
         gid = -1;
     }
