@@ -737,11 +737,12 @@ void start_main_loop(void)
                     }
 
                     std::string name(data.Name);
-                    map_to_localdomain_ifnecessary(name);
 
                     if( (name == "root") && (RootSquash == true) ){
                         name = NoBody;
                     }
+
+                    map_to_localdomain_ifnecessary(name);
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
@@ -767,11 +768,12 @@ void start_main_loop(void)
                     }
 
                     std::string name(data.Name);
-                    map_to_localdomain_ifnecessary(name);
 
                     if( (name == "root") && (RootSquash == true) ){
                         name = NoGroup;
                     }
+
+                    map_to_localdomain_ifnecessary(name);
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
