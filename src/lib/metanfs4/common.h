@@ -40,7 +40,7 @@
 
 /* -------------------------------------------------------------------------- */
 /* messages */
-#define MSG_UNAUTHORIZED            0
+#define MSG_INVALID                 0
 
 #define MSG_IDMAP_REG_NAME          1           // registr name if not local, remove local REALM if present
 #define MSG_IDMAP_REG_GROUP         2           // registr group if not local, remove local REALM if present

@@ -95,6 +95,7 @@ std::string             NoGroup         = "nogroup";
 int                     NoGroupID       = -1;
 std::string             PrimaryGroup    = "all@METANFS4";
 int                     PrimaryGroupID  = -1;
+bool                    RootSquash      = true;
 
 // [local]
 CSmallString            LocalDomain;
@@ -398,6 +399,46 @@ bool load_cache(bool skip)
 
 // -----------------------------------------------------------------------------
 
+void save_cache(void)
+{
+    // write cache if necessary
+    if( CacheFileName == NULL ) return;
+
+    syslog(LOG_INFO,"writing cache to %s",(const char*)CacheFileName);
+
+    CFileName dir = CFileName(CacheFileName).GetFileDirectory();
+    mkdir(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    chmod(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH );
+
+    std::ofstream fout(CacheFileName);
+    int unum = 0;
+    int gnum = 0;
+    if( fout ){
+        chmod(CacheFileName,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+
+        std::map<std::string,int>::iterator it = UserToID.begin();
+        std::map<std::string,int>::iterator ie = UserToID.end();
+        while( it != ie ){
+            fout << "n " << it->first << " " << it->second << std::endl;
+            it++;
+            unum++;
+        }
+
+        it = GroupToID.begin();
+        ie = GroupToID.end();
+        while( it != ie ){
+            fout << "g " << it->first << " " << it->second << std::endl;
+            it++;
+            gnum++;
+        }
+        fout.close();
+    }
+
+    syslog(LOG_INFO,"number of cache records (users/groups): %d/%d",unum,gnum);
+}
+
+// -----------------------------------------------------------------------------
+
 bool load_group(void)
 {
 // load group if present
@@ -504,6 +545,7 @@ bool load_principal(void)
         std::vector<std::string> strs;
         boost::split(strs,line,boost::is_any_of(":"));
         if( strs.size() == 2 ){
+            if( (strs[1] == "root") && (RootSquash == true) ) continue;
             PrincipalMap[strs[0]] = strs[1];
         }
     }
@@ -564,7 +606,7 @@ void start_main_loop(void)
 
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
+                        data.Type = MSG_INVALID;
                         syslog(LOG_INFO,"unauthorized request");
                         break;
                     }
@@ -606,7 +648,7 @@ void start_main_loop(void)
                     }
                     if( authorized == false ){
                         memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
+                        data.Type = MSG_INVALID;
                         syslog(LOG_INFO,"unauthorized request");
                         break;
                     }
@@ -655,6 +697,10 @@ void start_main_loop(void)
                         }
                     }
 
+                    if( (id == 0) && (RootSquash == true) ){
+                        id = NobodyID;
+                    }
+
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_PRINC_TO_ID;
                     data.ID = id;
@@ -669,7 +715,7 @@ void start_main_loop(void)
                         int id = data.ID - BaseID;
                         // prepare response
                         memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
+                        data.Type = MSG_INVALID;
                         std::string name = IDToUser[id];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_NAME;
@@ -695,6 +741,9 @@ void start_main_loop(void)
                             data.ID = -1;
                         }
                     }
+                    if( (data.ID == 0) && (RootSquash == true) ){
+                        data.ID = NobodyID;
+                    }
                 }
                 break;
 
@@ -706,7 +755,7 @@ void start_main_loop(void)
                         int id = data.ID - BaseID;
                         // prepare response
                         memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
+                        data.Type = MSG_INVALID;
                         std::string name = IDToGroup[id];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_GROUP;
@@ -733,6 +782,9 @@ void start_main_loop(void)
                         } else {
                             data.ID = -1;
                         }
+                    }
+                    if( (data.ID == 0) && (RootSquash == true) ){
+                        data.ID = NobodyID;
                     }
                 }
                 break;
@@ -770,7 +822,7 @@ void start_main_loop(void)
                 break;
                 
                 case MSG_GROUP_MEMBER:{
-                    data.Type = MSG_UNAUTHORIZED;
+                    data.Type = MSG_INVALID;
                     std::string gname(data.Name);
                     int mid = data.ID;
                     memset(&data,0,sizeof(data));
@@ -826,40 +878,7 @@ void catch_signals(int signo)
     close(ServerSocket);
     ServerSocket = -1;
     
-    // write cache if necessary    
-    if( CacheFileName == NULL ) return;
-    
-    syslog(LOG_INFO,"writing cache to %s",(const char*)CacheFileName);
-    
-    CFileName dir = CFileName(CacheFileName).GetFileDirectory();
-    mkdir(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-    chmod(dir, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH );
-    
-    std::ofstream fout(CacheFileName);
-    int unum = 0;
-    int gnum = 0;
-    if( fout ){
-        chmod(CacheFileName,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
-        
-        std::map<std::string,int>::iterator it = UserToID.begin();
-        std::map<std::string,int>::iterator ie = UserToID.end();
-        while( it != ie ){
-            fout << "n " << it->first << " " << it->second << std::endl;
-            it++;
-            unum++;
-        } 
-        
-        it = GroupToID.begin();
-        ie = GroupToID.end();
-        while( it != ie ){
-            fout << "g " << it->first << " " << it->second << std::endl;
-            it++;
-            gnum++;
-        }
-        fout.close();
-    }
-    
-    syslog(LOG_INFO,"number of cache records (users/groups): %d/%d",unum,gnum);
+    save_cache();
 }
 
 // -----------------------------------------------------------------------------
@@ -927,6 +946,7 @@ int GetOrRegisterUser(const std::string& name)
     // try local account
     struct passwd * p_pw = getpwnam(name.c_str());
     if( p_pw == NULL ) return(-1);
+    if( (p_pw->pw_uid == 0) && (RootSquash == true) ) return(-1);
     return( p_pw->pw_uid );
 }
 
@@ -948,6 +968,7 @@ int GetOrRegisterGroup(const std::string& name)
     // try local account
     struct group * p_gr = getgrnam(name.c_str());
     if( p_gr == NULL ) return(-1);
+    if( (p_gr->gr_gid == 0) && (RootSquash == true) ) return(-1);
     return( p_gr->gr_gid );
 }
 
