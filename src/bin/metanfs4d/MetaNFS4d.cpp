@@ -265,7 +265,7 @@ bool load_config(void)
     CSmallString tmp;
 
 // [setup]
-    syslog(LOG_INFO,"\n[setup]");
+    syslog(LOG_INFO,"[setup]");
 
     if( config.OpenSection("setup") == true ){
         // all is optional setup
@@ -283,7 +283,7 @@ bool load_config(void)
     syslog(LOG_INFO,"primary group (PrimaryGroup): %s",PrimaryGroup.c_str());
 
 // [local]
-    syslog(LOG_INFO,"\n[local]");
+    syslog(LOG_INFO,"[local]");
 
     if( config.OpenSection("local") == false ){
         syslog(LOG_INFO,"unable to open the [local] section in the configuration file %s",CONFIG);
@@ -312,7 +312,7 @@ bool load_config(void)
     }
 
 // [group]
-    syslog(LOG_INFO,"\n[group]");
+    syslog(LOG_INFO,"[group]");
 
     if( config.OpenSection("group") == true ){
         config.GetStringByKey("Name",GroupFileName);
@@ -333,15 +333,13 @@ bool load_config(void)
     }
 
 // [cache]
-    syslog(LOG_INFO,"\n[cache]");
+    syslog(LOG_INFO,"[cache]");
 
     if( config.OpenSection("cache") == true ){
         config.GetStringByKey("Name",CacheFileName);
     }
 
     syslog(LOG_INFO,"cache file name (Name): %s",(const char*)CacheFileName);
-
-    syslog(LOG_INFO,"\n");
 }
 
 // -----------------------------------------------------------------------------
