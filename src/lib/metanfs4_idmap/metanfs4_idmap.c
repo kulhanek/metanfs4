@@ -56,7 +56,7 @@ struct trans_func *libnfsidmap_plugin_init()
 int name_to_uid(char *name, uid_t *uid)
 {
     int muid = idmap_get_uid(name);
-    if( muid <= 0 ) return(-ENOENT);
+    if( muid < 0 ) return(-ENOENT);
     *uid = muid;
     return(0);
 }
@@ -66,7 +66,7 @@ int name_to_uid(char *name, uid_t *uid)
 int name_to_gid(char *name, uid_t *gid)
 {
     int mgid= idmap_get_gid(name);
-    if( mgid <= 0 ) return(-ENOENT);
+    if( mgid < 0 ) return(-ENOENT);
     *gid = mgid;
     return(0);
 }
@@ -126,7 +126,7 @@ int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
 
     // get principal uid
     int muid = idmap_get_princ_uid(princ);
-    if( muid <= 0 ) return(-ENOENT);
+    if( muid < 0 ) return(-ENOENT);
 
     // get user info
     struct passwd* p_pw = getpwuid(muid);
@@ -147,7 +147,7 @@ int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
 
     // get principal uid
     int muid = idmap_get_princ_uid(princ);
-    if( muid <= 0 ) return(-ENOENT);
+    if( muid < 0 ) return(-ENOENT);
 
     // get user info
     struct passwd* p_pw = getpwuid(muid);
