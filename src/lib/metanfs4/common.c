@@ -172,7 +172,7 @@ int idmap_get_gid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
-int idmap_user_to_local(const char* name, char* lname, int len)
+int idmap_user_to_local_domain(const char* name, char* lname, int len)
 {
     struct sockaddr_un  address;
     struct SNFS4Message data;
@@ -221,7 +221,7 @@ int idmap_user_to_local(const char* name, char* lname, int len)
 
 /* -------------------------------------------------------------------------- */
 
-int idmap_group_to_local(const char* name, char* lname, int len)
+int idmap_group_to_local_domain(const char* name, char* lname, int len)
 {
     struct sockaddr_un  address;
     struct SNFS4Message data;
