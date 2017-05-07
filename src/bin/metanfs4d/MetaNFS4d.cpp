@@ -420,6 +420,7 @@ bool load_group(void)
     int unum = 0;
     int gnum = 0;
     int uinum = 0;
+    int ulnum = 0;
     int ginum = 0;
     std::string line;
     while( getline(fin,line) ){
@@ -434,6 +435,7 @@ bool load_group(void)
                     IDToGroup[TopGroupID] = gname;
                     gnum++;
                 } else {
+                    gnum++;
                     ginum++;
                 }
                 std::vector<std::string> usrs;
@@ -449,6 +451,7 @@ bool load_group(void)
                             IDToUser[TopUserID] = uname;
                             unum++;
                         } else {
+                            unum++;
                             uinum++;
                         }
                         // add user with domain
@@ -459,6 +462,7 @@ bool load_group(void)
                         std::string lname = can_user_be_local(uname);
                         if( ! lname.empty() ){
                             GroupMembers[gname].insert(lname);
+                            ulnum++;
                         }
                     }
                     it++;
@@ -469,6 +473,7 @@ bool load_group(void)
     }
     syslog(LOG_INFO,"group items (users/groups): %d/%d",unum,gnum);
     syslog(LOG_INFO,"group items already read from cache (users/groups): %d/%d",uinum,ginum);
+    syslog(LOG_INFO,"users mapped to local users: %d",ulnum);
     fin.close();
 }
 
