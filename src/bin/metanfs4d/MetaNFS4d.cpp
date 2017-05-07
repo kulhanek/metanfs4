@@ -744,9 +744,9 @@ void start_main_loop(void)
 
                     if( (name == "root") && (RootSquash == true) ){
                         name = NoBody;
+                    } else {
+                        map_to_localdomain_ifnecessary(name);
                     }
-
-                    map_to_localdomain_ifnecessary(name);
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
@@ -775,9 +775,9 @@ void start_main_loop(void)
 
                     if( (name == "root") && (RootSquash == true) ){
                         name = NoGroup;
+                    } else {
+                        map_to_localdomain_ifnecessary(name);
                     }
-
-                    map_to_localdomain_ifnecessary(name);
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
