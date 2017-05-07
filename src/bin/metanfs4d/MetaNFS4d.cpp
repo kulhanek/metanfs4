@@ -151,7 +151,8 @@ const std::string is_princ_local(const std::string &princ);
 // conditional mapping of user to local account
 const std::string can_user_be_local(const std::string &name);
 
-// get or register group name
+// get or register user or group
+int GetOrRegisterUser(const std::string& name);
 int GetOrRegisterGroup(const std::string& name);
 
 // -----------------------------------------------------------------------------
@@ -180,6 +181,7 @@ bool init_server(int argc,char* argv[])
 {
     // open syslog
     openlog("metanfs4d",LOG_PID,LOG_DAEMON);
+    syslog(LOG_INFO,"-------------------------------------------------------------------------------");
     syslog(LOG_INFO,"starting server");    
     
 // setup options ---------------------------------
@@ -207,7 +209,7 @@ bool init_server(int argc,char* argv[])
     if( load_principal() == false ) return(false);
     
 // rest of the setup -----------------------------
-    NobodyID = GetOrRegisterGroup(NoBody);
+    NobodyID = GetOrRegisterUser(NoBody);
     syslog(LOG_INFO,"%s id is %d",NoBody.c_str(),NobodyID);
     NoGroupID = GetOrRegisterGroup(NoGroup);
     syslog(LOG_INFO,"%s id is %d",NoGroup.c_str(),NoGroupID);
