@@ -82,7 +82,7 @@ File            - name with metanfs4 cache. the cache contains only group/id and
 // -----------------------------------------------------------------------------
 // global data
 int                     BaseID          = 5000000;
-int                     TopNameID       = 0;
+int                     TopUserID       = 0;
 int                     TopGroupID      = 0;
 int                     ServerSocket    = -1;
 bool                    Verbose = false;
@@ -97,9 +97,9 @@ std::string             PrimaryGroup    = "all@METANFS4";
 int                     PrimaryGroupID  = -1;
 
 // [local]
-CSmallString                        LocalDomain;
-CSmallString                        PrincipalMapFileName;
-std::set<std::string>               LocalRealms;
+CSmallString            LocalDomain;
+CSmallString            PrincipalMapFileName;
+std::set<std::string>   LocalRealms;
 
 // [group]
 CSmallString            GroupFileName;
@@ -109,8 +109,8 @@ std::set<std::string>   LocalDomains;
 CSmallString            CacheFileName;
 
 // data storages
-std::map<std::string,int> NameToID;
-std::map<int,std::string> IDToName;
+std::map<std::string,int> UserToID;
+std::map<int,std::string> IDToUser;
 std::map<std::string,int> GroupToID;
 std::map<int,std::string> IDToGroup;
 
@@ -370,10 +370,10 @@ bool load_cache(bool skip)
             int         nid = -1;
             fin >> type >> name >> nid;
             if( (fin) && (type == 'n') ){
-                NameToID[name] = nid;
-                IDToName[nid] = name;
-                if( TopNameID < nid ){
-                    TopNameID = nid;
+                UserToID[name] = nid;
+                IDToUser[nid] = name;
+                if( TopUserID < nid ){
+                    TopUserID = nid;
                 }
                 num++;
             }
@@ -438,10 +438,10 @@ bool load_group(void)
                 while( it != ie ){
                     std::string uname = *it;
                     if( uname.find("@") != std::string::npos ){
-                        if( NameToID.count(uname) == 0 ){
-                            TopNameID++;
-                            NameToID[uname] = TopNameID;
-                            IDToName[TopNameID] = uname;
+                        if( UserToID.count(uname) == 0 ){
+                            TopUserID++;
+                            UserToID[uname] = TopUserID;
+                            IDToUser[TopUserID] = uname;
                             unum++;
                         } else {
                             uinum++;
@@ -566,13 +566,13 @@ void start_main_loop(void)
 
                     if( ! is_domain_local(name,lname) ){
                         // get id
-                        id = NameToID[name];
+                        id = UserToID[name];
                         if( id == 0 ){
                             // not registered - create new record
-                            TopNameID++;
-                            NameToID[name] = TopNameID;
-                            IDToName[TopNameID] = name;
-                            id = TopNameID;
+                            TopUserID++;
+                            UserToID[name] = TopUserID;
+                            IDToUser[TopUserID] = name;
+                            id = TopUserID;
                         }
                         id = id + BaseID;
                     }
@@ -660,7 +660,7 @@ void start_main_loop(void)
                         // prepare response
                         memset(&data,0,sizeof(data));
                         data.Type = MSG_UNAUTHORIZED;
-                        std::string name = IDToName[id];
+                        std::string name = IDToUser[id];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_NAME;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
@@ -676,7 +676,7 @@ void start_main_loop(void)
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_NAME_TO_ID;
                     if( name != "NoBody" ){
-                        int id = NameToID[name];
+                        int id = UserToID[name];
                         if( id > 0 ) {
                             data.ID = id + BaseID;
                         } else {
@@ -729,9 +729,9 @@ void start_main_loop(void)
                     int id = data.ID;
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_ENUM_NAME;
-                    if( (id >= 1) && (id <= TopNameID) ){
+                    if( (id >= 1) && (id <= TopUserID) ){
                         data.ID = id;
-                        std::string name = IDToName[id];
+                        std::string name = IDToUser[id];
                         if( ! name.empty() ) {
                             strncpy(data.Name,name.c_str(),MAX_NAME);
                         }
@@ -829,8 +829,8 @@ void catch_signals(int signo)
     if( fout ){
         chmod(CacheFileName,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
         
-        std::map<std::string,int>::iterator it = NameToID.begin();
-        std::map<std::string,int>::iterator ie = NameToID.end();
+        std::map<std::string,int>::iterator it = UserToID.begin();
+        std::map<std::string,int>::iterator ie = UserToID.end();
         while( it != ie ){
             fout << "n " << it->first << " " << it->second << std::endl;
             it++;
@@ -899,11 +899,32 @@ const std::string can_user_be_local(const std::string &name)
 
 // -----------------------------------------------------------------------------
 
+int GetOrRegisterUser(const std::string& name)
+{
+    // try metanfs4 user first
+    if( UserToID.count(name) == 1 ){
+        return(UserToID[name]+BaseID);
+    }
+    // if it is not local account register new group
+    if( name.find("@") != std::string::npos ){
+        TopUserID++;
+        UserToID[name] = TopUserID;
+        IDToUser[TopUserID] = name;
+        return(TopUserID+BaseID);
+    }
+    // try local account
+    struct passwd * p_pw = getpwnam(name.c_str());
+    if( p_pw == NULL ) return(-1);
+    return( p_pw->pw_uid );
+}
+
+// -----------------------------------------------------------------------------
+
 int GetOrRegisterGroup(const std::string& name)
 {
     // try metanfs4 group first
     if( GroupToID.count(name) == 1 ){
-        return(GroupToID[name]);
+        return(GroupToID[name]+BaseID);
     }
     // if it is not local account register new group
     if( name.find("@") != std::string::npos ){
