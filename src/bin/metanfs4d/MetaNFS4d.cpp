@@ -95,7 +95,11 @@ std::string             NoGroup         = "nogroup";
 int                     NoGroupID       = -1;
 std::string             PrimaryGroup    = "all@METANFS4";
 int                     PrimaryGroupID  = -1;
-bool                    RootSquash      = true;
+bool                    RootSquash      = true;  // ensure that none operation in MetaNFS4 will result in uid=0 or gid=0
+
+// RootSquesh will not influence sec=sys mounts, which is desired behaviour, see
+// http://redsymbol.net/linux-kernel-boot-parameters/
+// nfs.nfs4_disable_idmapping and nfsd.nfs4_disable_idmapping
 
 // [local]
 CSmallString            LocalDomain;
