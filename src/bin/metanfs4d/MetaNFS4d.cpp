@@ -146,6 +146,9 @@ bool load_principal(void);
 // test if name is from local domain
 bool is_domain_local(const std::string &name,std::string &lname);
 
+// map to local domain if necessary
+void map_to_localdomain_ifnecessary(std::string &name);
+
 // it returns local user name if principal is local
 const std::string is_princ_local(const std::string &princ);
 
@@ -715,6 +718,66 @@ void start_main_loop(void)
                     data.ID = id;
                 }
                 break;
+
+            case MSG_IDMAP_USER_TO_LOCAL_DOMAIN:{
+                    // check if sender is root
+                    bool authorized = false;
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }
+                    }
+                    if( authorized == false ){
+                        memset(&data,0,sizeof(data));
+                        data.Type = MSG_INVALID;
+                        syslog(LOG_INFO,"unauthorized request");
+                        break;
+                    }
+
+                    std::string name(data.Name);
+                    map_to_localdomain_ifnecessary(name);
+
+                    if( (name == "root") && (RootSquash == true) ){
+                        name = NoBody;
+                    }
+
+                    memset(&data,0,sizeof(data));
+                    data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
+                    strncpy(data.Name,name.c_str(),MAX_NAME);
+                }
+                break;
+
+            case MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN:{
+                    // check if sender is root
+                    bool authorized = false;
+                    struct ucred cred;
+                    socklen_t credlen = sizeof(cred);
+                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
+                        if( cred.uid == 0 ){
+                            authorized = true;
+                         }
+                    }
+                    if( authorized == false ){
+                        memset(&data,0,sizeof(data));
+                        data.Type = MSG_INVALID;
+                        syslog(LOG_INFO,"unauthorized request");
+                        break;
+                    }
+
+                    std::string name(data.Name);
+                    map_to_localdomain_ifnecessary(name);
+
+                    if( (name == "root") && (RootSquash == true) ){
+                        name = NoGroup;
+                    }
+
+                    memset(&data,0,sizeof(data));
+                    data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
+                    strncpy(data.Name,name.c_str(),MAX_NAME);
+                }
+                break;
                 
                 case MSG_ID_TO_NAME:{
                     if( data.ID == NobodyID ){
@@ -902,6 +965,15 @@ bool is_domain_local(const std::string &name,std::string &lname)
     lname = bufs[0];
     if( (bufs.size() == 2) && (bufs[1] == std::string(LocalDomain)) ) return(true);
     return(false);
+}
+
+// -----------------------------------------------------------------------------
+
+void map_to_localdomain_ifnecessary(std::string &name)
+{
+    if( name.find("@") == std::string::npos ){
+        name = name + std::string("@") + std::string(LocalDomain);
+    }
 }
 
 // -----------------------------------------------------------------------------

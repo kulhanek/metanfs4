@@ -172,6 +172,104 @@ int idmap_get_gid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
+int idmap_user_to_local(const char* name, char* lname, int len)
+{
+    struct sockaddr_un  address;
+    struct SNFS4Message data;
+    int                 addrlen;
+
+    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
+    if( clisckt == -1 ) return(-ENOENT);
+
+    memset(&address, 0, sizeof(struct sockaddr_un));
+
+    address.sun_family = AF_UNIX;
+    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
+    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
+
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
+    strncpy(data.Name,name,MAX_NAME);
+
+    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    memset(&data,0,sizeof(data));
+
+    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    if( data.Type != MSG_IDMAP_USER_TO_LOCAL_DOMAIN ) {
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    close(clisckt);
+
+    data.Name[MAX_NAME] = '\0';
+    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
+    strcpy(lname,data.Name);
+
+    return(0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+int idmap_group_to_local(const char* name, char* lname, int len)
+{
+    struct sockaddr_un  address;
+    struct SNFS4Message data;
+    int                 addrlen;
+
+    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
+    if( clisckt == -1 ) return(-ENOENT);
+
+    memset(&address, 0, sizeof(struct sockaddr_un));
+
+    address.sun_family = AF_UNIX;
+    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
+    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
+
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
+    strncpy(data.Name,name,MAX_NAME);
+
+    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    memset(&data,0,sizeof(data));
+
+    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    if( data.Type != MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN ) {
+        close(clisckt);
+        return(-ENOENT);
+    }
+
+    close(clisckt);
+
+    data.Name[MAX_NAME] = '\0';
+    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
+    strcpy(lname,data.Name);
+
+    return(0);
+}
+
+/* -------------------------------------------------------------------------- */
+
 int get_uid(const char* name)
 {
     struct sockaddr_un  address;

@@ -40,21 +40,23 @@
 
 /* -------------------------------------------------------------------------- */
 /* messages */
-#define MSG_INVALID                 0
+#define MSG_INVALID                     0
 
-#define MSG_IDMAP_REG_NAME          1           // registr name if not local, remove local REALM if present
-#define MSG_IDMAP_REG_GROUP         2           // registr group if not local, remove local REALM if present
+#define MSG_IDMAP_REG_NAME              1       // registr name if not local, remove local REALM if present
+#define MSG_IDMAP_REG_GROUP             2       // registr group if not local, remove local REALM if present
+#define MSG_IDMAP_USER_TO_LOCAL_DOMAIN  3
+#define MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN 4
 
-#define MSG_NAME_TO_ID              3
-#define MSG_ID_TO_NAME              4
-#define MSG_GROUP_TO_ID             5
-#define MSG_ID_TO_GROUP             6
+#define MSG_NAME_TO_ID                  5
+#define MSG_ID_TO_NAME                  6
+#define MSG_GROUP_TO_ID                 7
+#define MSG_ID_TO_GROUP                 8
 
-#define MSG_ENUM_NAME               7
-#define MSG_ENUM_GROUP              8
-#define MSG_GROUP_MEMBER            9
+#define MSG_ENUM_NAME                   9
+#define MSG_ENUM_GROUP                 10
+#define MSG_GROUP_MEMBER               11
 
-#define MSG_IDMAP_PRINC_TO_ID      10
+#define MSG_IDMAP_PRINC_TO_ID          12
 
 /* message structure */
 struct SNFS4Message {
@@ -67,6 +69,8 @@ struct SNFS4Message {
 /* idmap */
 int idmap_get_uid(const char* name);
 int idmap_get_gid(const char* name);
+int idmap_user_to_local_domain(const char* name,char* lname,int len);
+int idmap_group_to_local_domain(const char* name,char* lname,int len);
 int idmap_get_princ_uid(const char* name);
 
 /* nsswitch */
