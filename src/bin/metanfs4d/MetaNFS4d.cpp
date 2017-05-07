@@ -50,25 +50,63 @@
 #define CONFIG  "/etc/metanfs4.conf"
 
 // -----------------------------------------------------------------------------
+
+/*
+
+[setup]
+BaseID          - base id for new users and groups (default: 5000000)
+QueueLen        - length of queue for incomming requests (default: 65535)
+NoBody          - name of nobody user (default: nobody)
+NoGroup         - name of nogroup group (default: nogroup)
+PrimaryGroup    - primary group for all metanfs4 users (default: all@METANFS4)
+
+[local]
+LocalDomain     - name of local domain, it has to be the same as in /etc/idmapd.conf
+PrincipalMap    - file with principal to local user mappring, each line: principal:locuser
+LocalRealms     - local realms for principal to local user mapping
+                - priority for mapping: PrincipalMap > LocalRealms
+
+[group]
+File            - name with group file, syntax is the same as /etc/group
+                  only names with domains (both group and user) are taken into account
+                  group id is ignored, it is taken from the cache or generated automatically
+LocalDomains    - if users from these domains can be mapped to local users then these local users are added
+                  to groups as well
+
+[cache]
+File            - name with metanfs4 cache. the cache contains only group/id and user/id mapping
+                  but not user/group ralations
+
+*/
+
+// -----------------------------------------------------------------------------
 // global data
 int                     BaseID          = 5000000;
 int                     TopNameID       = 0;
 int                     TopGroupID      = 0;
 int                     ServerSocket    = -1;
-int                     QueueLen        = 65535;
-CSmallString            NoBody;
-CSmallString            NoGroup;
-int                     NobodyID        = -1;
-int                     NogroupID       = -1;
-CSmallString            CacheFileName;
-CSmallString            GroupFileName;
-CSmallString            LocalDomain;                // always removed
 bool                    Verbose = false;
 
-// principal mappings
-CSmallString                        PrincipalToLocalNameFileName;
-std::map<std::string,std::string>   PrincipalToLocalName;
-std::set<std::string>               PrincipalRealmsToLocal;
+// [setup]
+int                     QueueLen        = 65535;
+std::string             NoBody          = "nobody";
+int                     NobodyID        = -1;
+std::string             NoGroup         = "nogroup";
+int                     NoGroupID       = -1;
+std::string             PrimaryGroup    = "all@METANFS4";
+int                     PrimaryGroupID  = -1;
+
+// [local]
+CSmallString                        LocalDomain;
+CSmallString                        PrincipalMapFileName;
+std::set<std::string>               LocalRealms;
+
+// [group]
+CSmallString            GroupFileName;
+std::set<std::string>   LocalDomains;
+
+// [cache]
+CSmallString            CacheFileName;
 
 // data storages
 std::map<std::string,int> NameToID;
@@ -76,8 +114,9 @@ std::map<int,std::string> IDToName;
 std::map<std::string,int> GroupToID;
 std::map<int,std::string> IDToGroup;
 
-// conditional mapping to the local users for GroupMembers
-std::set<std::string>                           DomainsToMapToLocalUser;
+// principal mappings
+std::map<std::string,std::string>               PrincipalMap;
+
 // group members
 std::map<std::string, std::set<std::string> >   GroupMembers;
 
@@ -104,16 +143,16 @@ bool load_principal(void);
 // -----------------------------------------------------------------------------
 
 // test if name is from local domain
-bool is_localdomain(const std::string &name,std::string &lname);
+bool is_domain_local(const std::string &name,std::string &lname);
 
-// map to local domain if not in any other domain
-void map_to_localdomain_ifnecessary(std::string &name);
+// it returns local user name if principal is local
+const std::string is_princ_local(const std::string &princ);
 
-// is realm local
-bool is_realm_local(const std::string &princ,std::string &lname);
+// conditional mapping of user to local account
+const std::string can_user_be_local(const std::string &name);
 
-// conditional mapping of user to local accounts
-bool can_user_be_local(const std::string &name,std::string &lname);
+// get or register group name
+int GetOrRegisterGroup(const std::string& name);
 
 // -----------------------------------------------------------------------------
 
@@ -168,18 +207,12 @@ bool init_server(int argc,char* argv[])
     if( load_principal() == false ) return(false);
     
 // rest of the setup -----------------------------
-
-    // get nobody and nogroup
-    struct passwd* psw = getpwnam(NoBody);
-    if( psw ){
-        NobodyID = psw->pw_uid;
-        syslog(LOG_INFO,"%s id is %d",(const char*)NoBody,NobodyID);
-    }
-    struct group* grp = getgrnam(NoGroup);
-    if( grp ){
-        NogroupID = grp->gr_gid;
-        syslog(LOG_INFO,"%s id is %d",(const char*)NoGroup,NogroupID);
-    }
+    NobodyID = GetOrRegisterGroup(NoBody);
+    syslog(LOG_INFO,"%s id is %d",NoBody.c_str(),NobodyID);
+    NoGroupID = GetOrRegisterGroup(NoGroup);
+    syslog(LOG_INFO,"%s id is %d",NoGroup.c_str(),NoGroupID);
+    PrimaryGroupID = GetOrRegisterGroup(PrimaryGroup);
+    syslog(LOG_INFO,"%s id is %d",PrimaryGroup.c_str(),PrimaryGroupID);
 
     // create server socket
     ServerSocket = socket(AF_UNIX,SOCK_SEQPACKET,0);
@@ -228,64 +261,83 @@ bool load_config(void)
         return(false);
     }
 
-    if( config.OpenSection("config") == false ){
-        syslog(LOG_INFO,"unable to open the 'config' section in the configuration file %s",CONFIG);
-        return(false);
-    }
-
-    if( config.GetStringByKey("local",LocalDomain) == false ){
-        syslog(LOG_INFO,"unable to read the 'local' domain from the configuration file %s",CONFIG);
-        return(false);
-    }
-    syslog(LOG_INFO,"local domain (local): %s",(const char*)LocalDomain);
-
-    // optional setup
     CSmallString tmp;
+
+// [setup]
+    syslog(LOG_INFO,"[setup]");
+
+    if( config.OpenSection("setup") == true ){
+        // all is optional setup
+        config.GetIntegerByKey("BaseID",BaseID);
+        config.GetIntegerByKey("QueueLen",QueueLen);
+        config.GetStringByKey("NoBody",NoBody);
+        config.GetStringByKey("NoGroup",NoGroup);
+        config.GetStringByKey("PrimaryGroup",PrimaryGroup);
+    }
+
+    syslog(LOG_INFO,"base ID (BaseID): %d",BaseID);
+    syslog(LOG_INFO,"queue length (QueueLen): %d",QueueLen);
+    syslog(LOG_INFO,"nobody (NoBody): %s",NoBody.c_str());
+    syslog(LOG_INFO,"nogroup (NoGroup): %s",NoGroup.c_str());
+    syslog(LOG_INFO,"primary group (PrimaryGroup): %s",PrimaryGroup.c_str());
+
+// [local]
+    syslog(LOG_INFO,"[local]");
+
+    if( config.OpenSection("local") == false ){
+        syslog(LOG_INFO,"unable to open the [local] section in the configuration file %s",CONFIG);
+        return(false);
+    }
+    if( config.GetStringByKey("LocalDomain",LocalDomain) == false ){
+        syslog(LOG_INFO,"unable to read the 'LocalDomain' domain from the configuration file %s",CONFIG);
+        return(false);
+    }
+
+    config.GetStringByKey("PrincipalMap",PrincipalMapFileName);
     tmp = NULL;
-    if( config.GetStringByKey("realms2locusers",tmp) == true ){
+    config.GetStringByKey("LocalRealms",tmp);
+    if( tmp != NULL ){
         std::string stmp(tmp);
-        boost::split(PrincipalRealmsToLocal,stmp,boost::is_any_of(","),boost::token_compress_on);
+        boost::split(LocalRealms,stmp,boost::is_any_of(","),boost::token_compress_on);
     }
 
-    if( PrincipalRealmsToLocal.size() > 0 ){
-        tmp = boost::join(PrincipalRealmsToLocal,",");
-        syslog(LOG_INFO,"realms for principal mapping to local users (realms2locusers): %s",(const char*)tmp);
+    syslog(LOG_INFO,"local domain (LocalDomain): %s",(const char*)LocalDomain);
+    syslog(LOG_INFO,"principal map (PrincipalMap): %s",(const char*)PrincipalMapFileName);
+
+    if( LocalRealms.size() != 0 ) {
+        syslog(LOG_INFO,"local realms (LocalRealms): %s",boost::join(LocalRealms,",").c_str());
     } else {
-        syslog(LOG_INFO,"realms for principal mapping to local users (realms2locusers): -disabled-");
+        syslog(LOG_INFO,"local realms (LocalRealms): -disabled-");
     }
 
-    tmp = NULL;
-    if( config.GetStringByKey("domains2locusers",tmp) == true ){
-        std::string stmp(tmp);
-        boost::split(DomainsToMapToLocalUser,stmp,boost::is_any_of(","),boost::token_compress_on);
+// [group]
+    syslog(LOG_INFO,"[setup]");
+
+    if( config.OpenSection("group") == true ){
+        config.GetStringByKey("Name",GroupFileName);
+        tmp = NULL;
+        config.GetStringByKey("LocalDomains",tmp);
+        if( tmp != NULL ){
+            std::string stmp(tmp);
+            boost::split(LocalDomains,stmp,boost::is_any_of(","),boost::token_compress_on);
+        }
     }
 
-    if( DomainsToMapToLocalUser.size() > 0 ){
-        tmp = boost::join(DomainsToMapToLocalUser,",");
-        syslog(LOG_INFO,"domains to conditionally map to local users (domains2locusers): %s",(const char*)tmp);
+    syslog(LOG_INFO,"group file name (Name): %s",(const char*)GroupFileName);
+
+    if( LocalRealms.size() != 0 ) {
+        syslog(LOG_INFO,"local domains (LocalDomains): %s",boost::join(LocalDomains,",").c_str());
     } else {
-        syslog(LOG_INFO,"domains to conditionally map to local users (domains2locusers): -disabled-");
+        syslog(LOG_INFO,"local domains (LocalDomains): -disabled-");
     }
 
-    // optional setup
-    config.GetIntegerByKey("queuelen",QueueLen);
-    NoBody = "nobody";
-    config.GetStringByKey("nobody",NoBody);
-    NoGroup = "nogroup";
-    config.GetStringByKey("nogroup",NoGroup);
-
-    config.GetIntegerByKey("base",BaseID);
-
-    syslog(LOG_INFO,"queue length (queuelen): %d",QueueLen);
-    syslog(LOG_INFO,"base ID (base): %d",BaseID);
-    syslog(LOG_INFO,"nobody (nobody): %s",(const char*)NoBody);
-    syslog(LOG_INFO,"nogroup (nogroup): %s",(const char*)NoGroup);
-
-    if( config.OpenSection("files") == true ){
-        config.GetStringByKey("cache",CacheFileName);
-        config.GetStringByKey("group",GroupFileName);
-        config.GetStringByKey("principal",PrincipalToLocalNameFileName);
+// [cache]
+    syslog(LOG_INFO,"[cache]");
+    if( config.OpenSection("cache") == true ){
+        config.GetStringByKey("Name",CacheFileName);
     }
+
+    syslog(LOG_INFO,"cache file name (Name): %s",(const char*)GroupFileName);
 }
 
 // -----------------------------------------------------------------------------
@@ -397,8 +449,8 @@ bool load_group(void)
                         // and again if it can be mapped to local account and the mapping is allowed
                         // this is important for proper function of rsync with --chown or --groupmap
                         // RT#202411
-                        std::string lname;
-                        if( can_user_be_local(uname,lname) == true ){
+                        std::string lname = can_user_be_local(uname);
+                        if( ! lname.empty() ){
                             GroupMembers[gname].insert(lname);
                         }
                     }
@@ -418,33 +470,33 @@ bool load_group(void)
 bool load_principal(void)
 {
 // load group if present
-    if( PrincipalToLocalNameFileName == NULL ) return(true);
+    if( PrincipalMapFileName == NULL ) return(true);
 
-    syslog(LOG_INFO,"principal file: %s",(const char*)PrincipalToLocalNameFileName);
+    syslog(LOG_INFO,"principalmap file: %s",(const char*)PrincipalMapFileName);
 
     struct stat cstat;
     if( stat(GroupFileName,&cstat) != 0 ){
-        syslog(LOG_INFO,"unable to stat the principal file %s",(const char*)PrincipalToLocalNameFileName);
+        syslog(LOG_INFO,"unable to stat the principalmap file %s",(const char*)PrincipalMapFileName);
         return(false);
     }
     if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-        syslog(LOG_INFO,"wrong access rights on the principal file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)PrincipalToLocalNameFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+        syslog(LOG_INFO,"wrong access rights on the principalmap file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)PrincipalMapFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
         return(false);
     }
 
     std::ifstream fin;
-    fin.open(PrincipalToLocalNameFileName);
+    fin.open(PrincipalMapFileName);
     int unum = 0;
     std::string line;
     while( getline(fin,line) ){
         std::vector<std::string> strs;
         boost::split(strs,line,boost::is_any_of(":"));
         if( strs.size() == 2 ){
-            PrincipalToLocalName[strs[0]] = strs[1];
+            PrincipalMap[strs[0]] = strs[1];
         }
     }
 
-    syslog(LOG_INFO,"principal items (principal:local): %d",unum);
+    syslog(LOG_INFO,"principalmap items (principal:local): %d",unum);
     fin.close();
 }
 
@@ -510,7 +562,7 @@ void start_main_loop(void)
                     std::string name(data.Name);
                     std::string lname;
 
-                    if( ! is_localdomain(name,lname) ){
+                    if( ! is_domain_local(name,lname) ){
                         // get id
                         id = NameToID[name];
                         if( id == 0 ){
@@ -552,7 +604,7 @@ void start_main_loop(void)
                     std::string name(data.Name);
                     std::string lname;
 
-                    if( ! is_localdomain(name,lname) ){
+                    if( ! is_domain_local(name,lname) ){
                         // get id
                         id = GroupToID[name];
                         if( id == 0 ){
@@ -572,41 +624,15 @@ void start_main_loop(void)
                 }
                 break;
 
-                case MSG_IDMAP_TO_LOCAL_DOMAIN:{
-                    // check if sender is root
-                    bool authorized = false;
-                    struct ucred cred;
-                    socklen_t credlen = sizeof(cred);
-                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
-                        if( cred.uid == 0 ){
-                            authorized = true;
-                         }
-                    }
-                    if( authorized == false ){
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_UNAUTHORIZED;
-                        syslog(LOG_INFO,"unauthorized request");
-                        break;
-                    }
-
-                    std::string name(data.Name);
-                    map_to_localdomain_ifnecessary(name);
-
-                    memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_TO_LOCAL_DOMAIN;
-                    strncpy(data.Name,name.c_str(),MAX_NAME);
-                }
-                break;
-
                 case MSG_IDMAP_PRINC_TO_ID:{
                     // perform operation
                     std::string name(data.Name);
                     std::string lname;
 
-                    if( PrincipalToLocalName.count(name) == 1 ){
-                        lname = PrincipalToLocalName[name];
+                    if( PrincipalMap.count(name) == 1 ){
+                        lname = PrincipalMap[name];
                     } else {
-                        is_realm_local(name,lname);
+                        lname = is_princ_local(name);
                     }
                     int id = -1;
 
@@ -625,7 +651,7 @@ void start_main_loop(void)
                 
                 case MSG_ID_TO_NAME:{
                     if( data.ID == NobodyID ){
-                        strncpy(data.Name,NoBody,MAX_NAME);
+                        strncpy(data.Name,NoBody.c_str(),MAX_NAME);
                     } else {
                         // get relevant data
                         int id = data.ID - BaseID;
@@ -661,8 +687,8 @@ void start_main_loop(void)
                 break;
 
                 case MSG_ID_TO_GROUP:{
-                    if( data.ID == NogroupID ){
-                        strncpy(data.Name,NoGroup,MAX_NAME);
+                    if( data.ID == NoGroupID ){
+                        strncpy(data.Name,NoGroup.c_str(),MAX_NAME);
                     } else {
                         // get relevant data
                         int id = data.ID - BaseID;
@@ -692,7 +718,7 @@ void start_main_loop(void)
                             data.ID = -1;
                         }
                     } else {
-                        data.ID = NogroupID;
+                        data.ID = NoGroupID;
                     }
                 }
                 break;
@@ -824,7 +850,7 @@ void catch_signals(int signo)
 
 // -----------------------------------------------------------------------------
 
-bool is_localdomain(const std::string &name,std::string &lname)
+bool is_domain_local(const std::string &name,std::string &lname)
 {
     std::vector<std::string> bufs;
     boost::split(bufs,name,boost::is_any_of("@"));
@@ -838,48 +864,56 @@ bool is_localdomain(const std::string &name,std::string &lname)
 
 // -----------------------------------------------------------------------------
 
-void map_to_localdomain_ifnecessary(std::string &name)
-{
-    if( name.find("@") == std::string::npos ){
-        name = name + std::string("@") + std::string(LocalDomain);
-    }
-}
-
-// -----------------------------------------------------------------------------
-
-bool is_realm_local(const std::string &princ,std::string &lname)
+const std::string is_princ_local(const std::string &princ)
 {
     std::vector<std::string> bufs;
     boost::split(bufs,princ,boost::is_any_of("@"));
 
-    lname = "";
-    if( bufs.size() != 2 ) return(false); // the princ has to contain realm
+    if( bufs.size() != 2 ) return(std::string()); // the princ has to contain realm
 
-    if( PrincipalRealmsToLocal.count(bufs[1]) == 0 ) return(false); // realm is not allowed to be mapped to local user
+    if( LocalRealms.count(bufs[1]) == 0 ) return(std::string()); // realm is not allowed to be mapped to local user
 
     // return name
-    lname = bufs[0];
-    return(true);
+    return(bufs[0]);
 }
 
 // -----------------------------------------------------------------------------
 
-bool can_user_be_local(const std::string &name,std::string &lname)
+const std::string can_user_be_local(const std::string &name)
 {
     std::vector<std::string> bufs;
     boost::split(bufs,name,boost::is_any_of("@"));
 
-    lname = name;
-    if( bufs.size() != 2 ) return(false); // the name has to contain domain
+    if( bufs.size() != 2 ) return(std::string()); // the name has to contain domain
 
-    if( DomainsToMapToLocalUser.count(bufs[1]) == 0 ) return(false); // domain is not allowed to be mapped to local user
+    if( LocalDomains.count(bufs[1]) == 0 ) return(std::string()); // domain is not allowed to be mapped to local user
 
     // try to determine if the local user exist
     struct passwd* p_pw = getpwnam(bufs[0].c_str());
-    if( p_pw == NULL ) return(false);
+    if( p_pw == NULL ) return(std::string());
 
-    lname = bufs[0];
-    return(true);
+    return(bufs[0]);
+}
+
+// -----------------------------------------------------------------------------
+
+int GetOrRegisterGroup(const std::string& name)
+{
+    // try metanfs4 group first
+    if( GroupToID.count(name) == 1 ){
+        return(GroupToID[name]);
+    }
+    // if it is not local account register new group
+    if( name.find("@") != std::string::npos ){
+        TopGroupID++;
+        GroupToID[name] = TopGroupID;
+        IDToGroup[TopGroupID] = name;
+        return(TopGroupID);
+    }
+    // try local account
+    struct group * p_gr = getgrnam(name.c_str());
+    if( p_gr == NULL ) return(-1);
+    return( p_gr->gr_gid );
 }
 
 // -----------------------------------------------------------------------------

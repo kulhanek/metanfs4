@@ -31,37 +31,26 @@ int idmap_get_princ_uid(const char* name)
 
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
-    /* complete message */
-    iov[0].iov_base = &data;
-    iov[0].iov_len = sizeof(data);
-
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_IDMAP_PRINC_TO_ID;
-    strncpy(data.Name,name,MAX_NAME);
+    strncpy(data.Name,name,MAX_NAME);    
 
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = 0;
-    msg.msg_controllen = 0;
-    msg.msg_flags = 0;
-
-    if( sendmsg(clisckt,&msg,0) == -1 ) {
+    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
         close(clisckt);
-        return(-1);
+        return(-ENOENT);
     }
 
     memset(&data,0,sizeof(data));
 
-    if( recvmsg(clisckt,&msg,0) == -1 ) {
+    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
         close(clisckt);
-        return(-1);
+        return(-ENOENT);
     }
 
     if( data.Type != MSG_IDMAP_PRINC_TO_ID ) {
         close(clisckt);
-        return(-1);
+        return(-ENOENT);
     }
 
     close(clisckt);
@@ -183,55 +172,6 @@ int idmap_get_gid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
-int idmap_to_local_domain(const char* name, char* lname, int len)
-{
-    struct sockaddr_un  address;
-    struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-ENOENT);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
-
-    memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_TO_LOCAL_DOMAIN;
-    strncpy(data.Name,name,MAX_NAME);
-
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    if( data.Type != MSG_IDMAP_TO_LOCAL_DOMAIN ) {
-        close(clisckt);
-        return(-ENOENT);
-    }
-    
-    close(clisckt);
-    
-    data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
-    strcpy(lname,data.Name);
-
-    return(0);
-}
-
-/* -------------------------------------------------------------------------- */
-
 int get_uid(const char* name)
 {
     struct sockaddr_un  address;
@@ -250,6 +190,7 @@ int get_uid(const char* name)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_NAME_TO_ID;
     strncpy(data.Name,name,MAX_NAME);
 
@@ -295,6 +236,7 @@ int get_gid(const char* name)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_GROUP_TO_ID;
     strncpy(data.Name,name,MAX_NAME);
 
@@ -340,6 +282,7 @@ int get_name(int id,char* name,int bufflen)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_ID_TO_NAME;
     data.ID = id;
 
@@ -389,6 +332,7 @@ int get_group(int id,char* name,int bufflen)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_ID_TO_GROUP;
     data.ID = id;
 
@@ -438,6 +382,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_GROUP_MEMBER;
     strncpy(data.Name,gname,MAX_NAME);
     data.ID = id;
@@ -490,6 +435,7 @@ char* enumerate_name(int id)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NULL);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_ENUM_NAME;
     data.ID = id;
 
@@ -541,6 +487,7 @@ char* enumerate_group(int id)
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NULL);
 
     memset(&data,0,sizeof(data));
+
     data.Type = MSG_ENUM_GROUP;
     data.ID = id;
 

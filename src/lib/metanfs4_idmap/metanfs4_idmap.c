@@ -76,10 +76,21 @@ int name_to_gid(char *name, uid_t *gid)
 int uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 {
     struct passwd *p_pwd = getpwuid(uid);
-    if( p_pwd != NULL ){
-        if( idmap_to_local_domain(p_pwd->pw_name,name,len) == 0 ) return(0);
-    }     
-    return(-ENOENT);     
+    if( p_pwd == NULL ) return(-ENOENT);
+
+    // map to local domain if necessary
+    if( strstr(p_pwd->pw_name,"@") != NULL ){
+        // direct copy to name
+        if( strlen(p_pwd->pw_name)+1 > len ) return(-ERANGE);
+        strcpy(name,p_pwd->pw_name);
+        return(0);
+    }
+    // add local domain
+    if( strlen(p_pwd->pw_name)+1+strlen(domain)+1 > len ) return(-ERANGE);
+    strcpy(name,p_pwd->pw_name);
+    name[strlen(p_pwd->pw_name)] = '@';
+    strcpy(&name[strlen(p_pwd->pw_name)+1],domain);
+    return(0);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -87,10 +98,21 @@ int uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 int gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 {
     struct group *p_grp = getgrgid(gid);
-    if( p_grp != NULL ){
-        if( idmap_to_local_domain(p_grp->gr_name,name,len) == 0 ) return(0);
-    }   
-    return(-ENOENT);
+    if( p_grp == NULL ) return(-ENOENT);
+
+    // map to local domain if necessary
+    if( strstr(p_grp->gr_name,"@") != NULL ){
+        // direct copy to name
+        if( strlen(p_grp->gr_name)+1 > len ) return(-ERANGE);
+        strcpy(name,p_grp->gr_name);
+        return(0);
+    }
+    // add local domain
+    if( strlen(p_grp->gr_name)+1+strlen(domain)+1 > len ) return(-ERANGE);
+    strcpy(name,p_grp->gr_name);
+    name[strlen(p_grp->gr_name)] = '@';
+    strcpy(&name[strlen(p_grp->gr_name)+1],domain);
+    return(0);
 }
 
 /* -------------------------------------------------------------------------- */
