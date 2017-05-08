@@ -42,7 +42,7 @@ group:          compat metanfs4
 ### /etc/metanfs4.conf
 The file contains the main configuration for metanfs4.
 
-####[setup]
+####\[setup\]
 | | | |
 |-|-|-|
 | BaseID       | NUMBER  | base id for new users and groups (default: 5000000) |
@@ -51,20 +51,20 @@ The file contains the main configuration for metanfs4.
 | NoGroup      | STRING  | name of nogroup group (default: nogroup) |
 | PrimaryGroup | STRING  | primary group for all metanfs4 users (default: all@METANFS4) |
 
-####[local]
+####\[local\]
 | | | |
 |-|-|-|
 | LocalDomain  | STRING  | name of local domain, it has to be the same as in /etc/idmapd.conf |
 | PrincipalMap | NAME    | file name with principal to local user mapping, expected format is *principal:locuser* on each line |
 | LocalRealms  | LIST    | comma separated list of local realms for principal to local user mapping, *LocalRealms* has lower priority  than *PrincipalMap* |
 
-####[group]
+####\[group\]
 | | | |
 |-|-|-|
 | File          | NAME    | group file name, syntax is the same as /etc/group, only names with domains (both group and user) are taken into account, the provided group id is ignored and is either taken from the cache or generated automatically |
 | LocalDomains  | LIST    | comma separated list of domains, which can be considerred equivalent to the local domain for user accounts, if users from these domains can be mapped to local users then these local users are added to groups as well |
 
-####[cache]
+####\[cache\]
 | | | |
 |-|-|-|
 | File          | NAME    | file name with the metanfs4 cache. the cache contains only group/id and user/id mapping but not user/group ralations |
