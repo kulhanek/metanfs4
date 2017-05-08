@@ -5,7 +5,7 @@ The MetaNFS4 package provides nfsidmap and nsswitch services suitable for mounti
 The procedure is decribed [here](https://github.com/kulhanek/metanfs4-build).
 
 ## Package Contents
-The packages provides:
+The package provides:
 * daemon (bin/metanfs4d)
 * nfsidmap *metanfs4* plugin (lib/libidmap_metanfs4.so.2)
 * nsswitch *metanfs4* plugin (lib/libnss_metanfs4.so.2)
@@ -82,7 +82,7 @@ LocalDomain  NCBR
 LocalRealms  META,EINFRA
 
 [group]
-Name         /etc/group-metanfs4
+Name         /etc/group-nfs4
 LocalDomains META,EINFRA
 
 [cache]
