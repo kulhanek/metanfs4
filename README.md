@@ -21,7 +21,8 @@ Note that these links are created automatically by [metanfs-build](https://githu
 The suitable configuration is:
 ```bash
 [General]
-Domain = NCBR                 # it must be specified but it is ignored on clients, it determines namespace of accounts
+Domain = NCBR   # it must be specified but it is ignored on clients
+                # it effectivelly determines namespace of accounts
 
 [Mapping]
 Nobody-User = nobody
@@ -36,7 +37,7 @@ The suitable configuration for *passwd* and *group* databases is:
 ```bash
 passwd:         compat metanfs4
 group:          compat metanfs4
-```bash
+```
 
 ### /etc/metanfs4.conf
 The file contains the main configuration for metanfs4.
