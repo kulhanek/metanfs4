@@ -50,36 +50,6 @@
 #define CONFIG  "/etc/metanfs4.conf"
 
 // -----------------------------------------------------------------------------
-
-/*
-
-[setup]
-BaseID          - base id for new users and groups (default: 5000000)
-QueueLen        - length of queue for incomming requests (default: 65535)
-NoBody          - name of nobody user (default: nobody)
-NoGroup         - name of nogroup group (default: nogroup)
-PrimaryGroup    - primary group for all metanfs4 users (default: all@METANFS4)
-
-[local]
-LocalDomain     - name of local domain, it has to be the same as in /etc/idmapd.conf
-PrincipalMap    - file with principal to local user mappring, each line: principal:locuser
-LocalRealms     - local realms for principal to local user mapping
-                - priority for mapping: PrincipalMap > LocalRealms
-
-[group]
-File            - name with group file, syntax is the same as /etc/group
-                  only names with domains (both group and user) are taken into account
-                  group id is ignored, it is taken from the cache or generated automatically
-LocalDomains    - if users from these domains can be mapped to local users then these local users are added
-                  to groups as well
-
-[cache]
-File            - name with metanfs4 cache. the cache contains only group/id and user/id mapping
-                  but not user/group ralations
-
-*/
-
-// -----------------------------------------------------------------------------
 // global data
 int                     BaseID          = 5000000;
 int                     TopUserID       = 0;
