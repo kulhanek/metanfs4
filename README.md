@@ -66,7 +66,7 @@ The file contains the main configuration for metanfs4. The configuration is comp
 
 | Item | Type | Description |
 |-|-|-|
-| File          | NAME    | group file name, syntax is the same as /etc/group, only names with domains (both group and user) are taken into account, the provided group id is ignored and is either taken from the cache or generated automatically |
+| File          | NAME    | group file name, syntax is the same as /etc/group, only names with domains (both group and user) are taken into account, provided group ids are ignored and are either taken from the metanfs4 cache or generated automatically |
 | LocalDomains  | LIST    | comma separated list of domains, which can be considerred equivalent to the local domain for user accounts, if users from these domains can be mapped to local users then these local users are added to groups as well |
 
 **\[cache\]**
