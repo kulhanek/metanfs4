@@ -105,10 +105,12 @@ bool                    RootSquash      = true;  // ensure that none operation i
 CSmallString            LocalDomain;
 CSmallString            PrincipalMapFileName;
 std::set<std::string>   LocalRealms;
+struct stat             LastPrincMapStat;
 
 // [group]
 CSmallString            GroupFileName;
 std::set<std::string>   LocalDomains;
+struct stat             LastGroupStat;
 
 // [cache]
 CSmallString            CacheFileName;
@@ -143,7 +145,9 @@ void catch_signals(int signo);
 bool load_config(void);
 bool load_cache(bool skip);
 bool load_group(void);
-bool load_principal(void);
+bool reload_group(void);
+bool load_principal_map(void);
+bool reload_principal_map(void);
 
 // -----------------------------------------------------------------------------
 
@@ -213,7 +217,7 @@ bool init_server(int argc,char* argv[])
     if( load_config() == false ) return(false);
     if( load_cache(options.GetOptSkipCache()) == false ) return(false);
     if( load_group() == false ) return(false);
-    if( load_principal() == false ) return(false);
+    if( load_principal_map() == false ) return(false);
     
 // rest of the setup -----------------------------
     NobodyID = GetOrRegisterUser(NoBody);
@@ -458,15 +462,17 @@ bool load_group(void)
 
     syslog(LOG_INFO,"group file: %s",(const char*)GroupFileName);
 
-    struct stat cstat;
-    if( stat(GroupFileName,&cstat) != 0 ){
+    if( stat(GroupFileName,&LastGroupStat) != 0 ){
         syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
         return(false);
     }
-    if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-        syslog(LOG_INFO,"wrong access rights on the group file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)GroupFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+    if( (LastGroupStat.st_uid != 0) || (LastGroupStat.st_gid != 0) || ((LastGroupStat.st_mode & 0777) != 0644) ){
+        syslog(LOG_INFO,"wrong access rights on the group file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)GroupFileName,LastGroupStat.st_uid,LastGroupStat.st_gid,(LastGroupStat.st_mode & 0777));
         return(false);
     }
+
+    // the file can be re-loaded over time make sure the list is empty
+    GroupMembers.clear();
 
     std::ifstream fin;
     fin.open(GroupFileName);
@@ -534,22 +540,46 @@ bool load_group(void)
 
 // -----------------------------------------------------------------------------
 
-bool load_principal(void)
+bool reload_group(void)
+{
+    if( GroupFileName == NULL ) return(true);
+
+    struct stat my_stat;
+    if( stat(GroupFileName,&my_stat) != 0 ){
+        syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
+        return(false);
+    }
+
+    bool reload = false;
+    reload |= my_stat.st_ino != LastGroupStat.st_ino;
+    reload |= my_stat.st_size != LastGroupStat.st_size;
+    reload |= my_stat.st_mtime != LastGroupStat.st_mtime;
+
+    // reload the group if the file was modified
+    if( reload == true )  return(load_group());
+    return(true);
+}
+
+// -----------------------------------------------------------------------------
+
+bool load_principal_map(void)
 {
 // load group if present
     if( PrincipalMapFileName == NULL ) return(true);
 
     syslog(LOG_INFO,"principalmap file: %s",(const char*)PrincipalMapFileName);
 
-    struct stat cstat;
-    if( stat(GroupFileName,&cstat) != 0 ){
+    if( stat(GroupFileName,&LastPrincMapStat) != 0 ){
         syslog(LOG_INFO,"unable to stat the principalmap file %s",(const char*)PrincipalMapFileName);
         return(false);
     }
-    if( (cstat.st_uid != 0) || (cstat.st_gid != 0) || ((cstat.st_mode & 0777) != 0644) ){
-        syslog(LOG_INFO,"wrong access rights on the principalmap file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)PrincipalMapFileName,cstat.st_uid,cstat.st_gid,(cstat.st_mode & 0777));
+    if( (LastPrincMapStat.st_uid != 0) || (LastPrincMapStat.st_gid != 0) || ((LastPrincMapStat.st_mode & 0777) != 0644) ){
+        syslog(LOG_INFO,"wrong access rights on the principalmap file %s(%d:%d/%o) (root:root/0644 is required)",(const char*)PrincipalMapFileName,LastPrincMapStat.st_uid,LastPrincMapStat.st_gid,(LastPrincMapStat.st_mode & 0777));
         return(false);
     }
+
+    // the file can be re-loaded over time make sure the list is empty
+    PrincipalMap.clear();
 
     std::ifstream fin;
     fin.open(PrincipalMapFileName);
@@ -566,6 +596,30 @@ bool load_principal(void)
 
     syslog(LOG_INFO,"principalmap items (principal:local): %d",unum);
     fin.close();
+
+    return(true);
+}
+
+// -----------------------------------------------------------------------------
+
+bool reload_principal_map(void)
+{
+// load group if present
+    if( PrincipalMapFileName == NULL ) return(true);
+
+    struct stat my_stat;
+    if( stat(PrincipalMapFileName,&my_stat) != 0 ){
+        syslog(LOG_INFO,"unable to stat the principalmap file %s",(const char*)PrincipalMapFileName);
+        return(false);
+    }
+
+    bool reload = false;
+    reload |= my_stat.st_ino != LastPrincMapStat.st_ino;
+    reload |= my_stat.st_size != LastPrincMapStat.st_size;
+    reload |= my_stat.st_mtime != LastPrincMapStat.st_mtime;
+
+    // reload the group if the file was modified
+    if( reload == true )  return(load_principal_map());
 
     return(true);
 }
@@ -695,7 +749,9 @@ void start_main_loop(void)
                 break;
 
                 case MSG_IDMAP_PRINC_TO_ID:{
-                    // perform operation
+
+                    reload_principal_map(); // reload map if necessary
+
                     std::string name(data.Name);
                     std::string lname;
 
@@ -724,21 +780,6 @@ void start_main_loop(void)
                 break;
 
             case MSG_IDMAP_USER_TO_LOCAL_DOMAIN:{
-                    // check if sender is root
-                    bool authorized = false;
-                    struct ucred cred;
-                    socklen_t credlen = sizeof(cred);
-                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
-                        if( cred.uid == 0 ){
-                            authorized = true;
-                         }
-                    }
-                    if( authorized == false ){
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_INVALID;
-                        syslog(LOG_INFO,"unauthorized request");
-                        break;
-                    }
 
                     std::string name(data.Name);
 
@@ -755,21 +796,6 @@ void start_main_loop(void)
                 break;
 
             case MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN:{
-                    // check if sender is root
-                    bool authorized = false;
-                    struct ucred cred;
-                    socklen_t credlen = sizeof(cred);
-                    if( getsockopt(connsckt,SOL_SOCKET,SO_PEERCRED,&cred,&credlen) == 0 ){
-                        if( cred.uid == 0 ){
-                            authorized = true;
-                         }
-                    }
-                    if( authorized == false ){
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_INVALID;
-                        syslog(LOG_INFO,"unauthorized request");
-                        break;
-                    }
 
                     std::string name(data.Name);
 

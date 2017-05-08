@@ -16,3 +16,4 @@ src/lib/metanfs4_nsswitch/metanfs4_nsswitch.c
 src/lib/CMakeLists.txt
 src/CMakeLists.txt
 CMakeLists.txt
+README.md
