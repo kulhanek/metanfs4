@@ -14,6 +14,7 @@ The packages provides:
 On Ubuntu (tested for 16.04), nfsidmap and nsswitch must be installed to proper locations. This can be achieved by creating symbolic links:
 * ln -s $PREFIX/lib/libidmap_metanfs4.so.2 /lib/x86_64-linux-gnu/libnfsidmap/metanfs4.so
 * ln -s $PREFIX/lib/libnss_metanfs4.so.2 /lib/x86_64-linux-gnu/libnss_metanfs4.so.2
+
 Note that these links are created automatically by [metanfs-build](https://github.com/kulhanek/metanfs4-build).
 
 ## Configuration
