@@ -1,0 +1,9 @@
+[Unit]
+Description=MetaNFS4 ID Mapping Service
+
+[Service]
+Type=simple
+ExecStart=/opt/metanfs4/2.0/bin/metanfs4d
+
+[Install]
+WantedBy=multi-user.target

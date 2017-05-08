@@ -4,11 +4,12 @@ The MetaNFS4 package provides nfsidmap and nsswith services suitable for mountin
 ## Building Package
 The procedure is decribed [here](https://github.com/kulhanek/metanfs4-build).
 
-## Contents
+## Package Contents
 The packages provides:
 * daemon (bin/metanfs4d)
 * nfsidmap *metanfs4* plugin (lib/libidmap_metanfs4.so.2)
 * nsswitch *metanfs4* plugin (lib/libnss_metanfs4.so.2)
+* systemd service unit (share/systemd/metanfs4.service)
 
 On Ubuntu (tested for 16.04), nfsidmap and nsswitch must be installed to proper locations. This can be achieved by creating symbolic links:
 * ln -s $PREFIX/lib/libidmap_metanfs4.so.2 /lib/x86_64-linux-gnu/libnfsidmap/metanfs4.so
@@ -71,7 +72,7 @@ The file contains the main configuration for metanfs4. The configuration is comp
 
 | Item | Type | Description |
 |-|-|-|
-| File          | NAME    | file name with the metanfs4 cache. the cache contains only group/id and user/id mapping but not user/group ralations |
+| File          | NAME    | file name with the metanfs4 cache. the cache contains only group/id and user/id mapping but not user/group ralations, the cache maintains uids and gids during the daemon restart |
 
 Example from our deployment:
 ```bash
