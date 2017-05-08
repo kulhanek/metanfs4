@@ -40,7 +40,7 @@ group:          compat metanfs4
 ```
 
 ### /etc/metanfs4.conf
-The file contains the main configuration for metanfs4.
+The file contains the main configuration for metanfs4. The configuration is composed form several sections.
 
 **\[setup\]**
 
@@ -56,7 +56,7 @@ The file contains the main configuration for metanfs4.
 
 | Item | Type | Description |
 |-|-|-|
-| LocalDomain  | STRING  | name of local domain, it has to be the same as in /etc/idmapd.conf |
+| LocalDomain  | STRING  | name of local domain, it has to be the same as in /etc/idmapd.conf, this items is **mandatory** |
 | PrincipalMap | NAME    | file name with principal to local user mapping, expected format is *principal:locuser* on each line |
 | LocalRealms  | LIST    | comma separated list of local realms for principal to local user mapping, *LocalRealms* has lower priority  than *PrincipalMap* |
 
@@ -72,4 +72,18 @@ The file contains the main configuration for metanfs4.
 | Item | Type | Description |
 |-|-|-|
 | File          | NAME    | file name with the metanfs4 cache. the cache contains only group/id and user/id mapping but not user/group ralations |
+
+Example from our deployment:
+```bash
+[local]
+LocalDomain  NCBR
+LocalRealms  META,EINFRA
+
+[group]
+Name         /etc/group-metanfs4
+LocalDomains META,EINFRA
+
+[cache]
+Name         /var/cache/metanfs4/cache
+```
 
