@@ -81,6 +81,7 @@ struct stat             LastPrincMapStat;
 CSmallString            GroupFileName;
 std::set<std::string>   LocalDomains;
 struct stat             LastGroupStat;
+bool                    IgnoreIfNotExist = false;
 
 // [cache]
 CSmallString            CacheFileName;
@@ -278,18 +279,21 @@ bool load_config(void)
         syslog(LOG_INFO,"unable to read the 'LocalDomain' domain from the configuration file %s",CONFIG);
         return(false);
     }
+    syslog(LOG_INFO,"local domain (LocalDomain): %s",(const char*)LocalDomain);
 
     config.GetStringByKey("PrincipalMap",PrincipalMapFileName);
+    if( PrincipalMapFileName != NULL ){
+        syslog(LOG_INFO,"principal map (PrincipalMap): %s",(const char*)PrincipalMapFileName);
+    } else {
+        syslog(LOG_INFO,"principal map (PrincipalMap): -disabled-");
+    }
+
     tmp = NULL;
     config.GetStringByKey("LocalRealms",tmp);
     if( tmp != NULL ){
         std::string stmp(tmp);
         boost::split(LocalRealms,stmp,boost::is_any_of(","),boost::token_compress_on);
     }
-
-    syslog(LOG_INFO,"local domain (LocalDomain): %s",(const char*)LocalDomain);
-    syslog(LOG_INFO,"principal map (PrincipalMap): %s",(const char*)PrincipalMapFileName);
-
     if( LocalRealms.size() != 0 ) {
         syslog(LOG_INFO,"local realms (LocalRealms): %s",boost::join(LocalRealms,",").c_str());
     } else {
@@ -307,11 +311,17 @@ bool load_config(void)
             std::string stmp(tmp);
             boost::split(LocalDomains,stmp,boost::is_any_of(","),boost::token_compress_on);
         }
+        config.GetLogicalByKey("IgnoreIfNotExist",IgnoreIfNotExist)
     }
 
-    syslog(LOG_INFO,"group file name (Name): %s",(const char*)GroupFileName);
+    if( GroupFileName != NULL ){
+        syslog(LOG_INFO,"group file name (Name): %s",(const char*)GroupFileName);
+        syslog(LOG_INFO,"ignore if the group file does not exist (IgnoreIfNotExist): %s",PrmFileOnOff(IgnoreIfNotExist));
+    } else {
+        syslog(LOG_INFO,"group file name (Name): -disabled-");
+    }
 
-    if( LocalRealms.size() != 0 ) {
+    if( LocalDomains.size() != 0 ) {
         syslog(LOG_INFO,"local domains (LocalDomains): %s",boost::join(LocalDomains,",").c_str());
     } else {
         syslog(LOG_INFO,"local domains (LocalDomains): -disabled-");
@@ -434,6 +444,10 @@ bool load_group(void)
 
     if( stat(GroupFileName,&LastGroupStat) != 0 ){
         syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
+        if( IgnoreIfNotExist ) {
+            syslog(LOG_INFO,"but ignored as requested (IgnoreIfNotExist = on)");
+            return(true);
+        }
         return(false);
     }
     if( (LastGroupStat.st_uid != 0) || (LastGroupStat.st_gid != 0) || ((LastGroupStat.st_mode & 0777) != 0644) ){
@@ -488,6 +502,7 @@ bool load_group(void)
                         // and again if it can be mapped to local account and the mapping is allowed
                         // this is important for proper function of rsync with --chown or --groupmap
                         // RT#202411
+                        // well after some discussion this will not be used as it can make mess on local FSs
                         std::string lname = can_user_be_local(uname);
                         if( ! lname.empty() ){
                             GroupMembers[gname].insert(lname);
@@ -516,6 +531,7 @@ bool reload_group(void)
 
     struct stat my_stat;
     if( stat(GroupFileName,&my_stat) != 0 ){
+        if( IgnoreIfNotExist ) return(true);
         syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
         return(false);
     }
