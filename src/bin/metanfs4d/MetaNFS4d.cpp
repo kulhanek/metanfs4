@@ -36,6 +36,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <PrmFile.hpp>
+#include <PrmUtils.hpp>
 #include <SmallString.hpp>
 #include <FileName.hpp>
 
@@ -311,12 +312,12 @@ bool load_config(void)
             std::string stmp(tmp);
             boost::split(LocalDomains,stmp,boost::is_any_of(","),boost::token_compress_on);
         }
-        config.GetLogicalByKey("IgnoreIfNotExist",IgnoreIfNotExist)
+        config.GetLogicalByKey("IgnoreIfNotExist",IgnoreIfNotExist);
     }
 
     if( GroupFileName != NULL ){
         syslog(LOG_INFO,"group file name (Name): %s",(const char*)GroupFileName);
-        syslog(LOG_INFO,"ignore if the group file does not exist (IgnoreIfNotExist): %s",PrmFileOnOff(IgnoreIfNotExist));
+        syslog(LOG_INFO,"ignore if the group file does not exist (IgnoreIfNotExist): %s",(const char*)PrmFileOnOff(IgnoreIfNotExist));
     } else {
         syslog(LOG_INFO,"group file name (Name): -disabled-");
     }
