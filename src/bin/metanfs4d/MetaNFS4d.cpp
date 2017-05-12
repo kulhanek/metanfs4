@@ -339,6 +339,11 @@ bool load_config(void)
 
     syslog(LOG_INFO,"-------------------------------------------------------------------------------");
 
+    // check if the whole configuration was read
+    if( config.CountULines() > 0 ){
+        syslog(LOG_INFO,"FATAL ERROR: the configuration file contains unprocessed items (%d) - check spelling",config.CountULines());
+    }
+
     return(true);
 }
 
