@@ -1,5 +1,5 @@
 # metanfs4
-The MetaNFS4 package provides nfsidmap and nsswitch services suitable for mounting of NFS4 storages with the krb5 security type (*sec=krb5\**). The package is able to properly show file/directory owners and groups in situation when NFS4 servers with different user and group namespaces are mounted to one client. This functionality is achieved by creating local user and group accounts in the form **name@DOMAIN**, where **name** is a remote (user/group) account name and **DOMAIN** is a remote server name (usually short string, which should represent a namespace for accounts). These acounts are then exhibited to the system and can be used, for example, in the chgrp command. Note that the MetaNFS4 mapping is ignored for *sec=sys* (see kernel parameters: nfs.nfs4_disable_idmapping and nfsd.nfs4_disable_idmapping).
+The MetaNFS4 package provides nfsidmap and nsswitch services suitable for mounting of NFS4 storages with the krb5 security type (*sec=krb5\**). The package is able to properly show file/directory owners and groups in situation when NFS4 servers with different user and group namespaces are mounted to one client. This functionality is achieved by creating local user and group accounts in the form **name@DOMAIN**, where **name** is a remote (user/group) account name and **DOMAIN** is a remote server name (usually short string, which should represent a namespace for accounts). These accounts are then exhibited to the system and can be used, for example, in the chgrp command. Note that the MetaNFS4 mapping is ignored for *sec=sys* (see kernel parameters: nfs.nfs4_disable_idmapping and nfsd.nfs4_disable_idmapping).
 
 ## Building Package
 The procedure is decribed [here](https://github.com/kulhanek/metanfs4-build).
@@ -23,8 +23,8 @@ Note that these links are created automatically by [metanfs-build](https://githu
 The suitable configuration is:
 ```bash
 [General]
-Domain = NCBR   # it must be specified but it is ignored on clients
-                # it effectivelly determines namespace of accounts
+Domain = NCBR   # the domain can be considered as a namespace for accounts
+                # it must be always specified but it is used only by NFS4 servers and ignored on clients
 
 [Mapping]
 Nobody-User = nobody
@@ -82,8 +82,8 @@ LocalDomain  NCBR
 LocalRealms  META,EINFRA
 
 [group]
-Name         /etc/group-nfs4
-LocalDomains META,EINFRA
+Name                /etc/group.metanfs4
+IgnoreIfNotExist    on
 
 [cache]
 Name         /var/cache/metanfs4/cache
