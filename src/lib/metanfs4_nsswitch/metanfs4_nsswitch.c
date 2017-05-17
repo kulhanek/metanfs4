@@ -121,9 +121,8 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     }    
     strcpy(buffer, name);
     result->pw_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    buffer += strlen(buffer) + 1;
+    buflen -= strlen(buffer) + 1;    
 
     result->pw_passwd = "x";
     result->pw_uid = uid;
@@ -159,9 +158,8 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
     }
 
     result->pw_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    buffer += strlen(buffer) + 1;
+    buflen -= strlen(buffer) + 1;
     
     result->pw_passwd = "x";
     result->pw_uid = uid;
@@ -200,9 +198,8 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     }
     strcpy(buffer,name);
     result->gr_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    buffer += strlen(buffer) + 1;
+    buflen -= strlen(buffer) + 1;
     
     result->gr_passwd = "x";
     result->gr_gid = gid;
@@ -218,9 +215,8 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
         }
         if( ret == 0 ){ 
             id++;
-            len = strlen(buffer) + 1;
-            buffer += len;
-            buflen -= len;
+            buffer += strlen(buffer) + 1;
+            buflen -= strlen(buffer) + 1;
         }
     } while( ret == 0 );
     
@@ -234,8 +230,7 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
         *p_mem_list = p_mem_names;
         buflen -= sizeof(char*);
         p_mem_list++;
-        len = strlen(p_mem_names) + 1;
-        p_mem_names += len;
+        p_mem_names += strlen(p_mem_names) + 1;
     }
     if( sizeof(char*) > buflen ){
         if( errnop ) *errnop = ERANGE;
@@ -263,9 +258,8 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
     }
 
     result->gr_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    buffer += strlen(buffer) + 1;
+    buflen -= strlen(buffer) + 1;
     
     result->gr_passwd = "x";
     result->gr_gid = gid;
@@ -281,9 +275,8 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
         }
         if( ret == 0 ){ 
             id++;
-            len = strlen(buffer) + 1;
-            buffer += len;
-            buflen -= len;
+            buffer += strlen(buffer) + 1;
+            buflen -= strlen(buffer) + 1;
         }
     } while( ret == 0 );
     
@@ -297,8 +290,7 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
         *p_mem_list = p_mem_names;
         buflen -= sizeof(char*);
         p_mem_list++;
-        len = strlen(p_mem_names) + 1;
-        p_mem_names += len;
+        p_mem_names += strlen(p_mem_names) + 1;
     }
     if( sizeof(char*) > buflen ){
         if( errnop ) *errnop = ERANGE;
