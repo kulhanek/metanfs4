@@ -12,6 +12,11 @@
 
 #define NSS_STATUS enum nss_status
 
+/*
+  Documentation:
+  https://www.gnu.org/software/libc/manual/html_node/Extending-NSS.html#Extending-NSS
+*/
+
 /* -------------------------------------------------------------------------- */
 
 static int pwdbid = 0;
