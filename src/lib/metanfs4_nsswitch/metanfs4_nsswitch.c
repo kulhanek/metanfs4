@@ -26,6 +26,25 @@ NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                     char *buffer, size_t buflen, int *errnop);
 
+
+/* -------------------------------------------------------------------------- */
+
+NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *errnop)
+{
+    if( strlen(source) + 1 > *buflen ) {
+        if( errnop ) *errnop = ERANGE;
+        return(NSS_STATUS_TRYAGAIN);
+    }
+
+    strcpy(*buffer,source);
+    *dest = *buffer;
+    int len = strlen(*buffer) + 1;
+    *buffer += len;
+    *buflen -= len;
+
+    return(NSS_STATUS_SUCCESS);
+}
+
 /* -------------------------------------------------------------------------- */
 
 NSS_STATUS 
@@ -94,8 +113,9 @@ NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                      char *buffer, size_t buflen, int *errnop)
 {
-    int gid;
-    int uid;
+    int         gid;
+    int         uid;
+    NSS_STATUS  ret;
 
     if( strstr(name,"@") == NULL ){
         /* avoid infinitive loop with idmap */
@@ -104,34 +124,25 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     }
 
     uid = get_uid(name);
-
     if( uid <= 0 ){
-        if( errnop ) *errnop = 1;
+        if( errnop ) *errnop = ENOENT;
         return(NSS_STATUS_NOTFOUND);
     }
 
     gid = get_gid("METANFS4");
     if( gid <= 0 ){
-        gid = -1;
+        if( errnop ) *errnop = ENOENT;
+        retunr(NSS_STATUS_UNAVAIL);
     }
-    
-    if( strlen(name) + 1 > buflen ) {
-        if( errnop ) *errnop = ERANGE;
-        return(NSS_STATUS_NOTFOUND);
-    }    
-    strcpy(buffer, name);
-    result->pw_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
 
-    result->pw_passwd = "x";
+    // fill the structure
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_name),name,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop) != NSS_STATUS_SUCCESS ) return(ret);
     result->pw_uid = uid;
     result->pw_gid = gid;
-    /* gecos cannot be null on Ubuntu 12.04 as it crashes nscd daemon */
-    result->pw_gecos = result->pw_name;
-    result->pw_dir = "/dev/null";
-    result->pw_shell = "/dev/null";
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_gecos),result->pw_name,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_dir),"/dev/null",errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_shell),"/dev/null",errnop) != NSS_STATUS_SUCCESS ) return(ret);
 
     if( errnop ) *errnop = 0;
     return(NSS_STATUS_SUCCESS);
@@ -143,33 +154,33 @@ NSS_STATUS
 _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
                      size_t buflen, int *errnop)
 {  
-    int gid;
-    int ret;
+    int         gid;
+    NSS_STATUS  ret;
     
     ret = get_name(uid,buffer,buflen);
-    if( ret != 0 ){
-        if( errnop && (ret < 0) ) *errnop = ENOENT;
-        if( errnop && (ret > 0) ) *errnop = ERANGE;
+    if( ret < 0 ){
+        if( errnop ) *errnop = ENOENT;
         return(NSS_STATUS_NOTFOUND);
     }
-    
-    gid = get_gid("METANFS4");
-    if( gid <= 0 ){
-        gid = -1;
+    if( ret > 0 ){
+        if( errnop ) *errnop = ERANGE;
+        return(NSS_STATUS_TRYAGAIN);
     }
 
-    result->pw_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
-    
-    result->pw_passwd = "x";
+    gid = get_gid("METANFS4");
+    if( gid <= 0 ){
+        if( errnop ) *errnop = ENOENT;
+        retunr(NSS_STATUS_UNAVAIL);
+    }
+
+    // fill the structure
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_name),buffer,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop) != NSS_STATUS_SUCCESS ) return(ret);
     result->pw_uid = uid;
     result->pw_gid = gid;
-    /* gecos cannot be null on Ubuntu 12.04 as it crashes nscd daemon */
-    result->pw_gecos = result->pw_name;
-    result->pw_dir = "/dev/null";
-    result->pw_shell = "/dev/null";
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_gecos),result->pw_name,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_dir),"/dev/null",errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->pw_shell),"/dev/null",errnop) != NSS_STATUS_SUCCESS ) return(ret);
 
     if( errnop ) *errnop = 0;
     return(NSS_STATUS_SUCCESS);
@@ -180,7 +191,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
 NSS_STATUS
 _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    int gid,id,i,ret;
+    int gid,id,i,ret,len;
 
     if( strstr(name,"@") == NULL ){
         /* avoid infinitive loop with idmap */
@@ -190,23 +201,15 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
 
     gid = get_gid(name);
     if( gid <= 0 ){
-        if( errnop ) *errnop = 1;
+        if( errnop ) *errnop = ENOENT;
         return(NSS_STATUS_NOTFOUND);
     }
 
-    if( strlen(name) + 1 > buflen ) {
-        if( errnop ) *errnop = ERANGE;
-        return(NSS_STATUS_NOTFOUND);
-    }
-    strcpy(buffer,name);
-    result->gr_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
-    
-    result->gr_passwd = "x";
+    // fill the structure
+    if( ret = _setup_item(&buffer,&buflen,&(result->gr_name),name,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop) != NSS_STATUS_SUCCESS ) return(ret);
     result->gr_gid = gid;
-    
+
     // members
     char* p_mem_names = buffer;
     id = 0;
@@ -214,7 +217,7 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
         ret = get_group_member(name,id,buffer,buflen);
         if( ret > 0 ){
             if( errnop ) *errnop = ERANGE;
-            return(NSS_STATUS_NOTFOUND);
+            return(NSS_STATUS_TRYAGAIN);
         }
         if( ret == 0 ){ 
             id++;
@@ -229,7 +232,7 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     for(i=0; i < id; i++){
         if( sizeof(char*) > buflen ){
             if( errnop ) *errnop = ERANGE;
-            return(NSS_STATUS_NOTFOUND);
+            return(NSS_STATUS_TRYAGAIN);
         }
         *p_mem_list = p_mem_names;
         buflen -= sizeof(char*);
@@ -239,7 +242,7 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     }
     if( sizeof(char*) > buflen ){
         if( errnop ) *errnop = ERANGE;
-        return(NSS_STATUS_NOTFOUND);
+        return(NSS_STATUS_TRYAGAIN);
     }  
     *p_mem_list = NULL;
     
@@ -252,22 +255,22 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
 NSS_STATUS
 _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    int id,i;
+    int id,i,len;
     
     int ret;
     ret = get_group(gid,buffer,buflen);
-    if( ret != 0 ){
-        if( errnop && (ret < 0) ) *errnop = ENOENT;
-        if( errnop && (ret > 0) ) *errnop = ERANGE;
+    if( ret < 0 ){
+        if( errnop ) *errnop = ENOENT;
         return(NSS_STATUS_NOTFOUND);
     }
+    if( ret > 0 ){
+        if( errnop ) *errnop = ERANGE;
+        return(NSS_STATUS_TRYAGAIN);
+    }
 
-    result->gr_name = buffer;
-    int len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
-    
-    result->gr_passwd = "x";
+    // fill the structure
+    if( ret = _setup_item(&buffer,&buflen,&(result->gr_name),buffer,errnop) != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop) != NSS_STATUS_SUCCESS ) return(ret);
     result->gr_gid = gid;
 
     // members
@@ -277,7 +280,7 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
         ret = get_group_member(result->gr_name,id,buffer,buflen);
         if( ret > 0 ){
             if( errnop ) *errnop = ERANGE;
-            return(NSS_STATUS_NOTFOUND);
+            return(NSS_STATUS_TRYAGAIN);
         }
         if( ret == 0 ){ 
             id++;
@@ -292,7 +295,7 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
     for(i=0; i < id; i++){
         if( sizeof(char*) > buflen ){
             if( errnop ) *errnop = ERANGE;
-            return(NSS_STATUS_NOTFOUND);
+            return(NSS_STATUS_TRYAGAIN);
         }
         *p_mem_list = p_mem_names;
         buflen -= sizeof(char*);
@@ -302,7 +305,7 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
     }
     if( sizeof(char*) > buflen ){
         if( errnop ) *errnop = ERANGE;
-        return(NSS_STATUS_NOTFOUND);
+        return(NSS_STATUS_TRYAGAIN);
     }  
     *p_mem_list = NULL;    
 
