@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+# ==============================================================================
+# MetaNFS4 - user/id mapper for NFS4 mounts with the krb5 security type
+# ------------------------------------------------------------------------------
+#    Copyright (C) 2017 Pavol Mikulaj, 410530@mail.muni.cz
+#
+#     This program is free software; you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation; either version 2 of the License, or
+#     (at your option) any later version.
+#
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+#
+#     You should have received a copy of the GNU General Public License along
+#     with this program; if not, write to the Free Software Foundation, Inc.,
+#     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+# ==============================================================================
+
+import sys
+
+# ------------------------------------------------------------------------------
+
+def add_domain(infilename, domain):
+    '''
+    this function adds domain to every group and user in group file
+    '''
+    f = open(infilename)
+    lines = f.readlines()
+    for line in lines:
+        
+        line_splitted_all = line[:-1].split(":")                # delete '\n' at the end of file and split line by ':'
+        
+        sys.stdout.write(line_splitted_all[0]+"@"+domain+":")   # write group name with domain
+        for i in range(1,len(line_splitted_all)-1):             # write passwd and ID if exists
+            sys.stdout.write(line_splitted_all[i]+":")
+
+        if(line_splitted_all[-1] != ''):                        # if group contains users
+            line_splitted_names = line_splitted_all[-1].split(",")              # split user list
+            for k in range(0, len(line_splitted_names)-1): 
+                sys.stdout.write(line_splitted_names[k]+ "@" + domain + ",")    # write names with domain
+            sys.stdout.write(line_splitted_names[-1]+"@"+domain)                # last line without comma
+            
+        sys.stdout.write("\n")                                  # new line for every line
+
+    f.close()
+    return 0
+
+# ------------------------------------------------------------------------------
+
+add_domain(sys.argv[1], sys.argv[2])

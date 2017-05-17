@@ -17,3 +17,6 @@ src/lib/CMakeLists.txt
 src/CMakeLists.txt
 CMakeLists.txt
 README.md
+share/scripts/append-domain
+share/CMakeLists.txt
+share/scripts/CMakeLists.txt
