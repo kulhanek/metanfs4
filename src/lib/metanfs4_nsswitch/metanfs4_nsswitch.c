@@ -121,7 +121,6 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
 {
     int         gid;
     int         uid;
-    int         len;
     NSS_STATUS  ret;
 
     if( strstr(name,"@") == NULL ){
@@ -143,10 +142,8 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     }
 
     /* fill the structure */
-    result->pw_name = buffer;
-    len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    ret = _setup_item(&buffer,&buflen,&(result->pw_name),name,errnop);
+    if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     result->pw_uid = uid;
@@ -230,10 +227,8 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     }
 
     /* fill the structure */
-    result->gr_name = buffer;
-    len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    ret = _setup_item(&buffer,&buflen,&(result->gr_name),name,errnop);
+    if( ret != NSS_STATUS_SUCCESS ) return(ret);
 
     ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
