@@ -36,13 +36,13 @@ struct trans_func *libnfsidmap_plugin_init()
     nss_trans.name           = "metanfs4";
     nss_trans.init           = NULL;
 
-    // idmap
+    /* idmap  */
     nss_trans.name_to_uid    = name_to_uid;
     nss_trans.name_to_gid    = name_to_gid;
     nss_trans.uid_to_name    = uid_to_name;
     nss_trans.gid_to_name    = gid_to_name;
 
-    // krb5
+     /* krb5 */
     nss_trans.princ_to_ids   = princ_to_ids;
     nss_trans.gss_princ_to_grouplist = gss_princ_to_grouplist;
 
@@ -96,16 +96,19 @@ int gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
                 extra_mapping_params **ex)
 {
-    // check allowed security contexts
+    int             muid;
+    struct passwd*  p_pw;
+
+    /* check allowed security contexts */
     if (strcmp(secname, "spkm3") == 0) return(-ENOENT);
     if (strcmp(secname, "krb5") != 0) return(-EINVAL);
 
-    // get principal uid
-    int muid = idmap_get_princ_uid(princ);
+    /* get principal uid */
+    muid = idmap_get_princ_uid(princ);
     if( muid < 0 ) return(-ENOENT);
 
-    // get user info
-    struct passwd* p_pw = getpwuid(muid);
+    /* get user info */
+    p_pw = getpwuid(muid);
     if( p_pw == NULL ) return(-ENOENT);
     *uid = p_pw->pw_uid;
     *gid = p_pw->pw_gid;
@@ -118,18 +121,21 @@ int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
 int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
                            int *ngroups, extra_mapping_params **ex)
 {
-   // check allowed security contexts
+    int             muid;
+    struct passwd*  p_pw;
+
+    /* check allowed security contexts */
     if (strcmp(secname, "krb5") != 0) return(-EINVAL);
 
-    // get principal uid
-    int muid = idmap_get_princ_uid(princ);
+    /* get principal uid */
+    muid = idmap_get_princ_uid(princ);
     if( muid < 0 ) return(-ENOENT);
 
-    // get user info
-    struct passwd* p_pw = getpwuid(muid);
+    /* get user info */
+    p_pw = getpwuid(muid);
     if( p_pw == NULL ) return(-ENOENT);
 
-    // get groups
+    /*  get groups */
     if (getgrouplist(p_pw->pw_name, p_pw->pw_gid, groups, ngroups) < 0) return(-ERANGE);
 
     return(0);

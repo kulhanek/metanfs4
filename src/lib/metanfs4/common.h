@@ -1,5 +1,6 @@
 #ifndef METANFS4_COMMON_H
 #define METANFS4_COMMON_H
+/*
 // =============================================================================
 // MetaNFS4 - user/id mapper for NFS4 mounts with the krb5 security type 
 // -----------------------------------------------------------------------------
@@ -19,6 +20,7 @@
 //     with this program; if not, write to the Free Software Foundation, Inc.,
 //     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 // =============================================================================
+*/
 
 /* -------------------------------------------------------------------------- */
 
@@ -42,8 +44,8 @@
 /* messages */
 #define MSG_INVALID                     0
 
-#define MSG_IDMAP_REG_NAME              1       // registr name if not local, remove local REALM if present
-#define MSG_IDMAP_REG_GROUP             2       // registr group if not local, remove local REALM if present
+#define MSG_IDMAP_REG_NAME              1       /* registr name if not local, remove local REALM if present */
+#define MSG_IDMAP_REG_GROUP             2       /* egistr group if not local, remove local REALM if present */
 #define MSG_IDMAP_USER_TO_LOCAL_DOMAIN  3
 #define MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN 4
 

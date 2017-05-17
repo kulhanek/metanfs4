@@ -14,11 +14,9 @@
 
 int idmap_get_princ_uid(const char* name)
 {
-    struct sockaddr_un address;
-    struct msghdr       msg;
-    struct iovec        iov[1];
+    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int addrlen;
+    int                 addrlen;
 
     int clisckt = socket(AF_UNIX,SOCK_SEQPACKET,0);
     if( clisckt == -1 ) return(-1);
@@ -65,6 +63,7 @@ int idmap_get_uid(const char* name)
     struct sockaddr_un  address;
     struct SNFS4Message data;
     int                 addrlen;
+    struct passwd       *p_pwd;
 
     int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
     if( clisckt == -1 ) return(-1);
@@ -104,13 +103,13 @@ int idmap_get_uid(const char* name)
     
     data.Name[MAX_NAME] = '\0';
 
-    // ask for local uid
-    struct passwd *p_pwd = getpwnam(data.Name);  // data.Name contains local name
+    /* ask for local uid */
+    p_pwd = getpwnam(data.Name);  /* data.Name contains local name */
     if( p_pwd != NULL ){
         return(p_pwd->pw_uid);
     }
     
-    // ask for NOBODY
+    /* ask for NOBODY */
     return(get_uid("NOBODY"));
 }
 
@@ -121,6 +120,7 @@ int idmap_get_gid(const char* name)
     struct sockaddr_un  address;
     struct SNFS4Message data;
     int                 addrlen;
+    struct group        *p_grp;
 
     int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
     if( clisckt == -1 ) return(-1);
@@ -160,13 +160,13 @@ int idmap_get_gid(const char* name)
     
     data.Name[MAX_NAME] = '\0';
 
-    // ask for local gid
-    struct group *p_grp = getgrnam(data.Name);   // data.Name contains local name
+    /* ask for local gid */
+    p_grp = getgrnam(data.Name);   /* data.Name contains local name */
     if( p_grp != NULL ){
         return(p_grp->gr_gid);
     }
     
-    // ask for NOGROUP
+    /* ask for NOGROUP */
     return(get_gid("NOGROUP"));
 }
 
@@ -404,7 +404,7 @@ int get_name(int id,char* name,int bufflen)
     close(clisckt);
     
     data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > bufflen ) return(1); // out of memory
+    if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
     strcpy(name,data.Name);
 
     return(0);
@@ -454,7 +454,7 @@ int get_group(int id,char* name,int bufflen)
     close(clisckt);
     
     data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > bufflen ) return(1); // out of memory    
+    if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
     strcpy(name,data.Name);
 
     return(0);
@@ -505,7 +505,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
     close(clisckt);
 
     data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > bufflen ) return(1); // out of memory    
+    if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
     strcpy(name,data.Name);
     
     return(0);
