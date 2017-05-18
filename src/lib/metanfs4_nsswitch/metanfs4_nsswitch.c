@@ -20,19 +20,67 @@
 
 /* -------------------------------------------------------------------------- */
 
-int             _nss_metanfs4_pwdbid    = 0;
-int             _nss_metanfs4_grdbid    = 0;
-pthread_mutex_t _nss_metanfs4_lock      = PTHREAD_MUTEX_INITIALIZER;
+pthread_key_t   _nss_metanfs4_key_udx;
+pthread_key_t   _nss_metanfs4_key_gdx;
+pthread_once_t  _nss_metanfs4key_once = PTHREAD_ONCE_INIT;
+
+/* -------------------------------------------------------------------------- */
+
+void _nss_metanfs4_specific_destroy(void* ptr)
+{
+    if( ptr != NULL ) free(ptr);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void _nss_metanfs4_make_key(void)
+{
+    pthread_key_create(&_nss_metanfs4_key_udx,_nss_metanfs4_specific_destroy);
+    pthread_key_create(&_nss_metanfs4_key_gdx,_nss_metanfs4_specific_destroy);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void _nss_metanfs4_set_dx(int dx, pthread_key_t key)
+{
+    int* ptr;
+
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+
+    if( (ptr = (int*) pthread_getspecific(key) ) == NULL ){
+        ptr = (int*) malloc(sizeof(int));
+        if( ptr != NULL ){
+            if( pthread_setspecific(key,ptr) != 0 ) free(ptr);
+        }
+    }
+    if( ptr != NULL ){
+        *ptr = dx;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+
+int _nss_metanfs4_increment_dx(pthread_key_t key)
+{
+    int* ptr;
+
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+    ptr = (int*) pthread_getspecific(key);
+
+    if( ptr == NULL ) return(0);
+
+    *ptr = *ptr + 1;
+    return(*ptr);
+}
 
 /* -------------------------------------------------------------------------- */
 
 NSS_STATUS
-_nss_metanfs4_getgrnam_r(const char *name, struct group *result, 
+_nss_metanfs4_getgrnam_r(const char *name, struct group *result,
                     char *buffer, size_t buflen, int *errnop);
 NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                     char *buffer, size_t buflen, int *errnop);
-
 
 /* -------------------------------------------------------------------------- */
 
@@ -59,10 +107,7 @@ NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* so
 NSS_STATUS 
 _nss_metanfs4_setpwent(void)
 {
-    /* lock */
-    pthread_mutex_lock(&_nss_metanfs4_lock);
-
-    _nss_metanfs4_pwdbid = 0;
+    _nss_metanfs4_set_dx(_nss_metanfs4_key_udx,0);
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -72,9 +117,7 @@ NSS_STATUS
 _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
 {  
     char* name;
-
-    _nss_metanfs4_pwdbid++;
-    name = enumerate_name(_nss_metanfs4_pwdbid);
+    name = enumerate_name(_nss_metanfs4_increment_dx(_nss_metanfs4_key_udx));
     if( name != NULL ){
         return(_nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop));
     }
@@ -86,11 +129,7 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 NSS_STATUS 
 _nss_metanfs4_endpwent(void)
 {  
-    _nss_metanfs4_pwdbid = 0;
-
-    /* unlock */
-    pthread_mutex_unlock(&_nss_metanfs4_lock);
-
+    _nss_metanfs4_set_dx(_nss_metanfs4_key_udx,0);
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -99,10 +138,7 @@ _nss_metanfs4_endpwent(void)
 NSS_STATUS 
 _nss_metanfs4_setgrent(void)
 {  
-    /* lock */
-    pthread_mutex_lock(&_nss_metanfs4_lock);
-
-    _nss_metanfs4_grdbid = 0;
+    _nss_metanfs4_set_dx(_nss_metanfs4_key_gdx,0);
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -113,8 +149,7 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 {
     char* name;
 
-    _nss_metanfs4_grdbid++;
-    name = enumerate_group(_nss_metanfs4_grdbid);
+    name = enumerate_group(_nss_metanfs4_increment_dx(_nss_metanfs4_key_gdx));
     if( name != NULL ){
         return(_nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop));
     }
@@ -126,11 +161,7 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 NSS_STATUS 
 _nss_metanfs4_endgrent(void)
 {   
-    _nss_metanfs4_grdbid = 0;
-
-    /* unlock */
-    pthread_mutex_unlock(&_nss_metanfs4_lock);
-
+    _nss_metanfs4_set_dx(_nss_metanfs4_key_gdx,0);
     return(NSS_STATUS_SUCCESS);
 }
 
