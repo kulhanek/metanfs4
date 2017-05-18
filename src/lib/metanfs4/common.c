@@ -29,7 +29,9 @@ int exchange_data(struct SNFS4Message* p_msg)
 
     address.sun_family = AF_UNIX;
     strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
+
+    /* addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1; */
+    addrlen = sizeof(address.sun_family) + strlen(address.sun_path);
 
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
