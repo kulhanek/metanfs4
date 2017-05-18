@@ -45,8 +45,6 @@ void _nss_metanfs4_set_dx(int dx, pthread_key_t key)
 {
     int* ptr;
 
-    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
-
     if( (ptr = (int*) pthread_getspecific(key) ) == NULL ){
         ptr = (int*) malloc(sizeof(int));
         if( ptr != NULL ){
@@ -64,9 +62,7 @@ int _nss_metanfs4_increment_dx(pthread_key_t key)
 {
     int* ptr;
 
-    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
     ptr = (int*) pthread_getspecific(key);
-
     if( ptr == NULL ) return(0);
 
     *ptr = *ptr + 1;
@@ -107,7 +103,10 @@ NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* so
 NSS_STATUS 
 _nss_metanfs4_setpwent(void)
 {
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+
     _nss_metanfs4_set_dx(_nss_metanfs4_key_udx,0);
+
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -118,6 +117,8 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 {  
     char*       name;
     NSS_STATUS  ret;
+
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
 
     name = enumerate_name(_nss_metanfs4_increment_dx(_nss_metanfs4_key_udx));
     if( name != NULL ){
@@ -134,7 +135,10 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 NSS_STATUS 
 _nss_metanfs4_endpwent(void)
 {  
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+
     _nss_metanfs4_set_dx(_nss_metanfs4_key_udx,0);
+
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -143,7 +147,10 @@ _nss_metanfs4_endpwent(void)
 NSS_STATUS 
 _nss_metanfs4_setgrent(void)
 {  
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+
     _nss_metanfs4_set_dx(_nss_metanfs4_key_gdx,0);
+
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -154,6 +161,8 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 {
     char*       name;
     NSS_STATUS  ret;
+
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
 
     name = enumerate_group(_nss_metanfs4_increment_dx(_nss_metanfs4_key_gdx));
     if( name != NULL ){
@@ -170,7 +179,10 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 NSS_STATUS 
 _nss_metanfs4_endgrent(void)
 {   
+    pthread_once(&_nss_metanfs4key_once,_nss_metanfs4_make_key);
+
     _nss_metanfs4_set_dx(_nss_metanfs4_key_gdx,0);
+
     return(NSS_STATUS_SUCCESS);
 }
 
