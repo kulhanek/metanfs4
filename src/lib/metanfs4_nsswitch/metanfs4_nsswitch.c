@@ -41,7 +41,7 @@ void _nss_metanfs4_make_key(void)
 
 /* -------------------------------------------------------------------------- */
 
-void _nss_metanfs4_set_dx(int dx, pthread_key_t key)
+void _nss_metanfs4_set_dx(pthread_key_t key,int dx)
 {
     int* ptr;
 
