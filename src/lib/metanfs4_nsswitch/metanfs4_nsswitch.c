@@ -8,6 +8,7 @@
 #include <grp.h>
 #include <nss.h>
 #include <string.h>
+#include <pthread.h>
 #include "common.h"
 
 #define NSS_STATUS enum nss_status
@@ -19,8 +20,9 @@
 
 /* -------------------------------------------------------------------------- */
 
-static int pwdbid = 0;
-static int grdbid = 0;
+int             _nss_metanfs4_pwdbid    = 0;
+int             _nss_metanfs4_grdbid    = 0;
+pthread_mutex_t _nss_metanfs4_lock      = PTHREAD_MUTEX_INITIALIZER;
 
 /* -------------------------------------------------------------------------- */
 
@@ -57,7 +59,10 @@ NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* so
 NSS_STATUS 
 _nss_metanfs4_setpwent(void)
 {
-    pwdbid = 0;
+    /* lock */
+    pthread_mutex_lock(&_nss_metanfs4_lock);
+
+    _nss_metanfs4_pwdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -68,8 +73,8 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 {  
     char* name;
 
-    pwdbid++;    
-    name = enumerate_name(pwdbid);
+    _nss_metanfs4_pwdbid++;
+    name = enumerate_name(_nss_metanfs4_pwdbid);
     if( name != NULL ){
         return(_nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop));
     }
@@ -81,7 +86,11 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 NSS_STATUS 
 _nss_metanfs4_endpwent(void)
 {  
-    pwdbid = 0;
+    _nss_metanfs4_pwdbid = 0;
+
+    /* unlock */
+    pthread_mutex_unlock(&_nss_metanfs4_lock);
+
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -90,7 +99,10 @@ _nss_metanfs4_endpwent(void)
 NSS_STATUS 
 _nss_metanfs4_setgrent(void)
 {  
-    grdbid = 0;
+    /* lock */
+    pthread_mutex_lock(&_nss_metanfs4_lock);
+
+    _nss_metanfs4_grdbid = 0;
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -101,8 +113,8 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 {
     char* name;
 
-    grdbid++;    
-    name = enumerate_group(grdbid);
+    _nss_metanfs4_grdbid++;
+    name = enumerate_group(_nss_metanfs4_grdbid);
     if( name != NULL ){
         return(_nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop));
     }
@@ -114,7 +126,11 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 NSS_STATUS 
 _nss_metanfs4_endgrent(void)
 {   
-    grdbid = 0;
+    _nss_metanfs4_grdbid = 0;
+
+    /* unlock */
+    pthread_mutex_unlock(&_nss_metanfs4_lock);
+
     return(NSS_STATUS_SUCCESS);
 }
 
