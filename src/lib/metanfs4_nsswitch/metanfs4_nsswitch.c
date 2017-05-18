@@ -175,6 +175,11 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     int         uid;
     NSS_STATUS  ret;
 
+    if( name == NULL ){
+        if( errnop ) *errnop = ENOENT;
+        return(NSS_STATUS_NOTFOUND);
+    }
+
     if( strstr(name,"@") == NULL ){
         /* avoid infinitive loop with idmap */
         if( errnop ) *errnop = ENOENT;
@@ -190,7 +195,7 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
     gid = get_gid("METANFS4");
     if( gid <= 0 ){
         if( errnop ) *errnop = ENOENT;
-        return(NSS_STATUS_UNAVAIL);
+        return(NSS_STATUS_NOTFOUND);
     }
 
     /* fill the structure */
@@ -234,7 +239,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
     gid = get_gid("METANFS4");
     if( gid <= 0 ){
         if( errnop ) *errnop = ENOENT;
-        return(NSS_STATUS_UNAVAIL);
+        return(NSS_STATUS_NOTFOUND);
     }
 
     /* fill the structure */
@@ -265,6 +270,11 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
     int     gid,id,i,ret,len;
     char*   p_mem_names;
     char**  p_mem_list;
+
+    if( name == NULL ){
+        if( errnop ) *errnop = ENOENT;
+        return(NSS_STATUS_NOTFOUND);
+    }
 
     if( strstr(name,"@") == NULL ){
         /* avoid infinitive loop with idmap */

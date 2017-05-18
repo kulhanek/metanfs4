@@ -8,50 +8,64 @@
 #include <unistd.h>
 #include <nss.h>
 #include <errno.h>
+#include <stddef.h>
 #include "common.h"
 
 /* -------------------------------------------------------------------------- */
 
-int idmap_get_princ_uid(const char* name)
+int exchange_data(struct SNFS4Message* p_msg)
 {
     struct sockaddr_un  address;
-    struct SNFS4Message data;
-    int                 addrlen;
+    socklen_t           addrlen;
+    int                 type;
+    int                 clisckt;
 
-    int clisckt = socket(AF_UNIX,SOCK_SEQPACKET,0);
+    if( p_msg == NULL ) return(-1);
+
+    clisckt = socket(AF_UNIX,SOCK_SEQPACKET,0);
     if( clisckt == -1 ) return(-1);
 
     memset(&address, 0, sizeof(struct sockaddr_un));
 
     address.sun_family = AF_UNIX;
     strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
+    addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
 
     if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
-    memset(&data,0,sizeof(data));
+    type = p_msg->Type;
 
-    data.Type = MSG_IDMAP_PRINC_TO_ID;
-    strncpy(data.Name,name,MAX_NAME);    
-
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
+    if( write(clisckt,p_msg,sizeof(struct SNFS4Message)) != sizeof(struct SNFS4Message) ){
         close(clisckt);
-        return(-ENOENT);
+        return(-1);
     }
 
-    memset(&data,0,sizeof(data));
+    memset(p_msg,0,sizeof(struct SNFS4Message));
 
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
+    if( read(clisckt,p_msg,sizeof(struct SNFS4Message)) != sizeof(struct SNFS4Message) ){
         close(clisckt);
-        return(-ENOENT);
-    }
-
-    if( data.Type != MSG_IDMAP_PRINC_TO_ID ) {
-        close(clisckt);
-        return(-ENOENT);
+        return(-1);
     }
 
     close(clisckt);
+
+    if( p_msg->Type == type) return(0);
+
+    return(-1);
+}
+
+
+/* -------------------------------------------------------------------------- */
+
+int idmap_get_princ_uid(const char* name)
+{
+    struct SNFS4Message data;
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_IDMAP_PRINC_TO_ID;
+    strncpy(data.Name,name,MAX_NAME+1);
+
+    if( exchange_data(&data) != 0 ) return(-1);
 
     return(data.ID);
 }
@@ -60,44 +74,15 @@ int idmap_get_princ_uid(const char* name)
 
 int idmap_get_uid(const char* name)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-    struct passwd       *p_pwd;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
+    struct passwd*      p_pwd;
 
     memset(&data,0,sizeof(data));
     
     data.Type = MSG_IDMAP_REG_NAME;
-    strncpy(data.Name,name,MAX_NAME);
+    strncpy(data.Name,name,MAX_NAME+1);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_IDMAP_REG_NAME ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
 
     if( data.ID > 0 ) return(data.ID);
     
@@ -117,44 +102,14 @@ int idmap_get_uid(const char* name)
 
 int idmap_get_gid(const char* name)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-    struct group        *p_grp;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
+    struct group*       p_grp;
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_REG_GROUP;
-    strncpy(data.Name,name,MAX_NAME);
+    strncpy(data.Name,name,MAX_NAME+1);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_IDMAP_REG_GROUP ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
 
     if( data.ID > 0 ) return(data.ID);
     
@@ -174,43 +129,13 @@ int idmap_get_gid(const char* name)
 
 int idmap_user_to_local_domain(const char* name, char* lname, int len)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-ENOENT);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
-    strncpy(data.Name,name,MAX_NAME);
+    strncpy(data.Name,name,MAX_NAME+1);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    if( data.Type != MSG_IDMAP_USER_TO_LOCAL_DOMAIN ) {
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-ENOENT);
 
     data.Name[MAX_NAME] = '\0';
     if( strlen(data.Name) + 1 > len ) return(-ERANGE);
@@ -223,43 +148,13 @@ int idmap_user_to_local_domain(const char* name, char* lname, int len)
 
 int idmap_group_to_local_domain(const char* name, char* lname, int len)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-ENOENT);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-ENOENT);
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
     strncpy(data.Name,name,MAX_NAME);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    if( data.Type != MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN ) {
-        close(clisckt);
-        return(-ENOENT);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-ENOENT);
 
     data.Name[MAX_NAME] = '\0';
     if( strlen(data.Name) + 1 > len ) return(-ERANGE);
@@ -272,44 +167,13 @@ int idmap_group_to_local_domain(const char* name, char* lname, int len)
 
 int get_uid(const char* name)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_NAME_TO_ID;
     strncpy(data.Name,name,MAX_NAME);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_NAME_TO_ID ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
 
     return(data.ID);
 }
@@ -318,44 +182,13 @@ int get_uid(const char* name)
 
 int get_gid(const char* name)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_GROUP_TO_ID;
     strncpy(data.Name,name,MAX_NAME);
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_GROUP_TO_ID ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
 
     return(data.ID);
 }
@@ -364,44 +197,13 @@ int get_gid(const char* name)
 
 int get_name(int id,char* name,int bufflen)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_ID_TO_NAME;
     data.ID = id;
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_ID_TO_NAME ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
     
     data.Name[MAX_NAME] = '\0';
     if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
@@ -414,44 +216,13 @@ int get_name(int id,char* name,int bufflen)
 
 int get_group(int id,char* name,int bufflen)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_ID_TO_GROUP;
     data.ID = id;
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_ID_TO_GROUP ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
     
     data.Name[MAX_NAME] = '\0';
     if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
@@ -464,45 +235,14 @@ int get_group(int id,char* name,int bufflen)
 
 int get_group_member(const char* gname,int id,char* name,int bufflen)
 {
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(-1);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_GROUP_MEMBER;
-    strncpy(data.Name,gname,MAX_NAME);
+    strncpy(data.Name,gname,MAX_NAME+1);
     data.ID = id;
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(-1);
-    }
-
-    if( data.Type != MSG_GROUP_MEMBER ) {
-        close(clisckt);
-        return(-1);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(-1);
 
     data.Name[MAX_NAME] = '\0';
     if( strlen(data.Name) + 1 > bufflen ) return(1); /* out of memory */
@@ -515,50 +255,20 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
 
 char* enumerate_name(int id)
 {
-    static char         name[MAX_NAME+1];    
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(NULL);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-    memset(name,0,MAX_NAME+1);
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NULL);
+    char*               name;
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_ENUM_NAME;
     data.ID = id;
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(NULL);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(NULL);
-    }
-
-    if( data.Type != MSG_ENUM_NAME ) {
-        close(clisckt);
-        return(NULL);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(NULL);
 
     if( data.ID != id ) return(NULL); /* end of records */
 
-    strncpy(name,data.Name,MAX_NAME);
+    data.Name[MAX_NAME] = '\0';
+    name = (char*)malloc(sizeof(char*)*strlen(data.Name));
+    strncpy(name,data.Name,MAX_NAME+1);
 
     return(name);
 }
@@ -567,50 +277,20 @@ char* enumerate_name(int id)
 
 char* enumerate_group(int id)
 {
-    static char         name[MAX_NAME+1];     
-    struct sockaddr_un  address;
     struct SNFS4Message data;
-    int                 addrlen;
-
-    int clisckt = socket(AF_UNIX, SOCK_SEQPACKET,0);
-    if( clisckt == -1 ) return(NULL);
-
-    memset(&address, 0, sizeof(struct sockaddr_un));
-    memset(name,0,MAX_NAME+1);
-
-    address.sun_family = AF_UNIX;
-    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
-    addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
-
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NULL);
+    char*               name;
 
     memset(&data,0,sizeof(data));
-
     data.Type = MSG_ENUM_GROUP;
     data.ID = id;
 
-    if( write(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(NULL);
-    }
-
-    memset(&data,0,sizeof(data));
-
-    if( read(clisckt,&data,sizeof(data)) != sizeof(data) ){
-        close(clisckt);
-        return(NULL);
-    }
-
-    if( data.Type != MSG_ENUM_GROUP ) {
-        close(clisckt);
-        return(NULL);
-    }
-
-    close(clisckt);
+    if( exchange_data(&data) != 0 ) return(NULL);
 
     if( data.ID != id ) return(NULL); /* end of records */
 
-    strncpy(name,data.Name,MAX_NAME);
+    data.Name[MAX_NAME] = '\0';
+    name = (char*)malloc(sizeof(char*)*strlen(data.Name));
+    strncpy(name,data.Name,MAX_NAME+1);
 
     return(name);
 }
