@@ -54,7 +54,6 @@ int exchange_data(struct SNFS4Message* p_msg)
     return(-1);
 }
 
-
 /* -------------------------------------------------------------------------- */
 
 int idmap_get_princ_uid(const char* name)
