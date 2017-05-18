@@ -253,6 +253,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
 
 /* -------------------------------------------------------------------------- */
 
+/* returned string must be freed by free() */
 char* enumerate_name(int id)
 {
     struct SNFS4Message data;
@@ -275,6 +276,7 @@ char* enumerate_name(int id)
 
 /* -------------------------------------------------------------------------- */
 
+/* returned string must be freed by free() */
 char* enumerate_group(int id)
 {
     struct SNFS4Message data;

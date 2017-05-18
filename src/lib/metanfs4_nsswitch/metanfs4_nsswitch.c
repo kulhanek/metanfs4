@@ -116,11 +116,16 @@ _nss_metanfs4_setpwent(void)
 NSS_STATUS
 _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
 {  
-    char* name;
+    char*       name;
+    NSS_STATUS  ret;
+
     name = enumerate_name(_nss_metanfs4_increment_dx(_nss_metanfs4_key_udx));
     if( name != NULL ){
-        return(_nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop));
+        ret = _nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop);
+        free(name);
+        return(ret);
     }
+
     return(NSS_STATUS_NOTFOUND);
 }
 
@@ -147,12 +152,16 @@ _nss_metanfs4_setgrent(void)
 NSS_STATUS
 _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    char* name;
+    char*       name;
+    NSS_STATUS  ret;
 
     name = enumerate_group(_nss_metanfs4_increment_dx(_nss_metanfs4_key_gdx));
     if( name != NULL ){
-        return(_nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop));
+        ret = _nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop);
+        free(name);
+        return(ret);
     }
+
     return(NSS_STATUS_NOTFOUND);
 }
 
