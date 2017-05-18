@@ -16,10 +16,6 @@ SET_TARGET_PROPERTIES(nss_metanfs4 PROPERTIES
     CLEAN_DIRECT_OUTPUT 1
     VERSION "2")
 
-TARGET_LINK_LIBRARIES(nss_metanfs4
-    pthread
-    )
-
 INSTALL(TARGETS nss_metanfs4
         DESTINATION lib)
 
