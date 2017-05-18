@@ -39,6 +39,7 @@
 #include <PrmUtils.hpp>
 #include <SmallString.hpp>
 #include <FileName.hpp>
+#include <stddef.h>
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
@@ -215,8 +216,8 @@ bool init_server(int argc,char* argv[])
     memset(&address, 0, sizeof(struct sockaddr_un));
 
     address.sun_family = AF_UNIX;
-    snprintf(address.sun_path,UNIX_PATH_MAX,"%s",SERVERNAME);
-    int addrlen = strlen(address.sun_path) + sizeof(address.sun_family);
+    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
+    socklen_t addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
 
     if( bind(ServerSocket,(struct sockaddr *) &address,addrlen) != 0 ){
         syslog(LOG_ERR,"unable to bind socket to %s",SERVERNAME);
@@ -448,6 +449,8 @@ bool load_group(void)
 
     syslog(LOG_INFO,"group file: %s",(const char*)GroupFileName);
 
+    memset(&LastGroupStat,0,sizeof(LastGroupStat));
+
     if( stat(GroupFileName,&LastGroupStat) != 0 ){
         syslog(LOG_INFO,"unable to stat the group file %s",(const char*)GroupFileName);
         if( IgnoreIfNotExist ) {
@@ -561,7 +564,9 @@ bool load_principal_map(void)
 
     syslog(LOG_INFO,"principalmap file: %s",(const char*)PrincipalMapFileName);
 
-    if( stat(GroupFileName,&LastPrincMapStat) != 0 ){
+    memset(&LastPrincMapStat,0,sizeof(LastPrincMapStat));
+
+    if( stat(PrincipalMapFileName,&LastPrincMapStat) != 0 ){
         syslog(LOG_INFO,"unable to stat the principalmap file %s",(const char*)PrincipalMapFileName);
         return(false);
     }
@@ -886,6 +891,9 @@ void start_main_loop(void)
                 break;
 
                 case MSG_ENUM_NAME:{
+
+                    reload_group();
+
                     int id = data.ID;
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_ENUM_NAME;
@@ -902,6 +910,9 @@ void start_main_loop(void)
                 break;
 
                 case MSG_ENUM_GROUP:{
+
+                    reload_group();
+
                     int id = data.ID;
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_ENUM_GROUP;
@@ -918,6 +929,9 @@ void start_main_loop(void)
                 break;
                 
                 case MSG_GROUP_MEMBER:{
+
+                    reload_group();
+
                     data.Type = MSG_INVALID;
                     std::string gname(data.Name);
                     int mid = data.ID;
