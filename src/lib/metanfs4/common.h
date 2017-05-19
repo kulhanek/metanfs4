@@ -54,9 +54,9 @@
 #define MSG_GROUP_TO_ID                 7
 #define MSG_ID_TO_GROUP                 8
 
-#define MSG_ENUM_NAME                   9
-#define MSG_ENUM_GROUP                 10
-#define MSG_GROUP_MEMBER               11
+#define MSG_ENUM_NAME                   9       /* index is from 1 */
+#define MSG_ENUM_GROUP                 10       /* index is from 1 */
+#define MSG_GROUP_MEMBER               11       /* index is from 0 */
 
 #define MSG_IDMAP_PRINC_TO_ID          12
 

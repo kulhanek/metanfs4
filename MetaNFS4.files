@@ -9,7 +9,6 @@ src/bin/CMakeLists.txt
 src/lib/metanfs4/common.c
 src/lib/metanfs4/common.h
 src/lib/metanfs4_idmap/CMakeLists.txt
-src/lib/metanfs4_idmap/idmap_internal.h
 src/lib/metanfs4_idmap/metanfs4_idmap.c
 src/lib/metanfs4_nsswitch/CMakeLists.txt
 src/lib/metanfs4_nsswitch/metanfs4_nsswitch.c
@@ -20,3 +19,7 @@ README.md
 share/scripts/append-domain
 share/CMakeLists.txt
 share/scripts/CMakeLists.txt
+src/bin/metanfs4-tests/CMakeLists.txt
+src/bin/metanfs4-tests/main.cpp
+src/lib/metanfs4_nsswitch/metanfs4_nsswitch.h
+src/lib/metanfs4_idmap/metanfs4_idmap.h

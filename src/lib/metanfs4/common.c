@@ -63,7 +63,7 @@ int idmap_get_princ_uid(const char* name)
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_PRINC_TO_ID;
-    strncpy(data.Name,name,MAX_NAME+1);
+    strncpy(data.Name,name,MAX_NAME);
 
     if( exchange_data(&data) != 0 ) return(-1);
 
@@ -80,7 +80,7 @@ int idmap_get_uid(const char* name)
     memset(&data,0,sizeof(data));
     
     data.Type = MSG_IDMAP_REG_NAME;
-    strncpy(data.Name,name,MAX_NAME+1);
+    strncpy(data.Name,name,MAX_NAME);
 
     if( exchange_data(&data) != 0 ) return(-1);
 
@@ -107,7 +107,7 @@ int idmap_get_gid(const char* name)
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_REG_GROUP;
-    strncpy(data.Name,name,MAX_NAME+1);
+    strncpy(data.Name,name,MAX_NAME);
 
     if( exchange_data(&data) != 0 ) return(-1);
 
@@ -133,7 +133,7 @@ int idmap_user_to_local_domain(const char* name, char* lname, int len)
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
-    strncpy(data.Name,name,MAX_NAME+1);
+    strncpy(data.Name,name,MAX_NAME);
 
     if( exchange_data(&data) != 0 ) return(-ENOENT);
 
@@ -239,7 +239,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
 
     memset(&data,0,sizeof(data));
     data.Type = MSG_GROUP_MEMBER;
-    strncpy(data.Name,gname,MAX_NAME+1);
+    strncpy(data.Name,gname,MAX_NAME);
     data.ID = id;
 
     if( exchange_data(&data) != 0 ) return(-1);
@@ -268,8 +268,8 @@ char* enumerate_name(int id)
     if( data.ID != id ) return(NULL); /* end of records */
 
     data.Name[MAX_NAME] = '\0';
-    name = (char*)malloc(sizeof(char*)*strlen(data.Name));
-    strncpy(name,data.Name,MAX_NAME+1);
+    name = (char*)malloc(strlen(data.Name)+1);
+    strcpy(name,data.Name);
 
     return(name);
 }
@@ -291,8 +291,8 @@ char* enumerate_group(int id)
     if( data.ID != id ) return(NULL); /* end of records */
 
     data.Name[MAX_NAME] = '\0';
-    name = (char*)malloc(sizeof(char*)*strlen(data.Name));
-    strncpy(name,data.Name,MAX_NAME+1);
+    name = (char*)malloc(strlen(data.Name)+1);
+    strcpy(name,data.Name);
 
     return(name);
 }

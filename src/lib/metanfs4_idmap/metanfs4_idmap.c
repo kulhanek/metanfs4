@@ -8,20 +8,8 @@
 #include <pwd.h>
 #include <grp.h>
 #include <syslog.h>
-#include "idmap_internal.h"
-#include "common.h"
-
-/* -------------------------------------------------------------------------- */
-
-int name_to_uid(char *name, uid_t *uid);
-int name_to_gid(char *name, uid_t *gid);
-int uid_to_name(uid_t uid, char *domain, char *name, size_t len);
-int gid_to_name(gid_t gid, char *domain, char *name, size_t len);
-
-int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
-                extra_mapping_params **ex);
-int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
-                           int *ngroups, extra_mapping_params **ex);
+#include <common.h>
+#include <metanfs4_idmap.h>
 
 /* -----------------------------------------------------------------------------
 // #############################################################################

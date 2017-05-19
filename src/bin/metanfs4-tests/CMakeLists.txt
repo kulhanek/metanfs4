@@ -4,20 +4,16 @@
 
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 
-# daemon -----------------------------------------------------------------------
-SET(METANFS4D_SRC
-    MetaNFS4dOptions.cpp
-    MetaNFS4d.cpp
+# tests ------------------------------------------------------------------------
+SET(METANFS4_TESTS_SRC
+    main.cpp
     )
 
-ADD_EXECUTABLE(metanfs4d ${METANFS4D_SRC})
+ADD_EXECUTABLE(metanfs4-tests ${METANFS4_TESTS_SRC})
 
-TARGET_LINK_LIBRARIES(metanfs4d
-    ${PRMFILE_CLIB_NAME}
-    ${HIPOLY_LIB_NAME}
+TARGET_LINK_LIBRARIES(metanfs4-tests
+    idmap_metanfs4
+    nss_metanfs4
     )
-
-INSTALL(TARGETS metanfs4d
-        DESTINATION bin)
 
 # ------------------------------------------------------------------------------

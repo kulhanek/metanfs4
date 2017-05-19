@@ -3,3 +3,4 @@
 # ==============================================================================
 
 ADD_SUBDIRECTORY(metanfs4d)
+ADD_SUBDIRECTORY(metanfs4-tests)
