@@ -40,6 +40,7 @@
 #include <SmallString.hpp>
 #include <FileName.hpp>
 #include <stddef.h>
+#include "MetaNFS4Version.hpp"
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string.hpp>
@@ -242,6 +243,7 @@ bool load_config(void)
 {
 // load config -----------------------------------
     syslog(LOG_INFO,"loading config file: %s",CONFIG);
+    syslog(LOG_INFO,"MetaNFS4d %s",METANFS4_VERSION);
     syslog(LOG_INFO,"-------------------------------------------------------------------------------");
 
     CPrmFile config;

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+    then
+        echo "Run with 'activate' argument!"
+        exit
+    fi
+
+GITREVS=`git rev-list --count HEAD`
+GITHASH=`git rev-parse --short HEAD`
+DATE=`date +"%Y-%m-%d %H:%M"`
+
+cat > src/bin/metanfs4d/MetaNFS4Version.hpp << EOF
+#ifndef METANFS4VERSION_HPP
+#define METANFS4VERSION_HPP
+#define METANFS4_VERSION    "2.${GITREVS}.${GITHASH} ($DATE)"
+#endif // METANFS4VERSION_HPP
+EOF
+
+echo ""
+echo "MetaNFS4 Revision: 2.${GITREVS}.${GITHASH} ($DATE)"
+

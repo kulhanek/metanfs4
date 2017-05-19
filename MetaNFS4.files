@@ -23,3 +23,5 @@ src/bin/metanfs4-tests/CMakeLists.txt
 src/bin/metanfs4-tests/main.cpp
 src/lib/metanfs4_nsswitch/metanfs4_nsswitch.h
 src/lib/metanfs4_idmap/metanfs4_idmap.h
+src/bin/metanfs4d/MetaNFS4Version.hpp
+UpdateGitVersion
