@@ -1,0 +1,4 @@
+#ifndef METANFS4_IDMAP_H
+#define METANFS4_IDMAP_H
+
+#endif // METANFS4_IDMAP_H
