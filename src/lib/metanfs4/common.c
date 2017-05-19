@@ -13,6 +13,7 @@
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int exchange_data(struct SNFS4Message* p_msg)
 {
     struct sockaddr_un  address;
@@ -57,6 +58,7 @@ int exchange_data(struct SNFS4Message* p_msg)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int idmap_get_princ_uid(const char* name)
 {
     struct SNFS4Message data;
@@ -72,6 +74,7 @@ int idmap_get_princ_uid(const char* name)
        
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int idmap_get_uid(const char* name)
 {
     struct SNFS4Message data;
@@ -100,6 +103,7 @@ int idmap_get_uid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int idmap_get_gid(const char* name)
 {
     struct SNFS4Message data;
@@ -127,6 +131,7 @@ int idmap_get_gid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int idmap_user_to_local_domain(const char* name, char* lname, int len)
 {
     struct SNFS4Message data;
@@ -146,6 +151,7 @@ int idmap_user_to_local_domain(const char* name, char* lname, int len)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int idmap_group_to_local_domain(const char* name, char* lname, int len)
 {
     struct SNFS4Message data;
@@ -165,6 +171,7 @@ int idmap_group_to_local_domain(const char* name, char* lname, int len)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int get_uid(const char* name)
 {
     struct SNFS4Message data;
@@ -180,6 +187,7 @@ int get_uid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int get_gid(const char* name)
 {
     struct SNFS4Message data;
@@ -195,6 +203,7 @@ int get_gid(const char* name)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int get_name(int id,char* name,int bufflen)
 {
     struct SNFS4Message data;
@@ -214,6 +223,7 @@ int get_name(int id,char* name,int bufflen)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int get_group(int id,char* name,int bufflen)
 {
     struct SNFS4Message data;
@@ -233,6 +243,7 @@ int get_group(int id,char* name,int bufflen)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int get_group_member(const char* gname,int id,char* name,int bufflen)
 {
     struct SNFS4Message data;
@@ -254,6 +265,7 @@ int get_group_member(const char* gname,int id,char* name,int bufflen)
 /* -------------------------------------------------------------------------- */
 
 /* returned string must be freed by free() */
+DLL_LOCAL
 char* enumerate_name(int id)
 {
     struct SNFS4Message data;
@@ -277,6 +289,7 @@ char* enumerate_name(int id)
 /* -------------------------------------------------------------------------- */
 
 /* returned string must be freed by free() */
+DLL_LOCAL
 char* enumerate_group(int id)
 {
     struct SNFS4Message data;

@@ -24,6 +24,11 @@
 
 /* -------------------------------------------------------------------------- */
 
+#define DLL_EXPORT __attribute__ ((visibility ("default")))
+#define DLL_LOCAL  __attribute__ ((visibility ("hidden")))
+
+/* -------------------------------------------------------------------------- */
+
 #define SERVERPATH  "/var/run/metanfs4"
 #define SERVERNAME  SERVERPATH "/metanfs4d.sock"
 

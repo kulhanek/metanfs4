@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
     test_pwent();
     test_grent();
 
-    for(size_t buflen = 0; buflen < 30; buflen++){
+    for(size_t buflen = 0; buflen < 100000; buflen+=1024){
         test_getpwnam("kulhanek@META",buflen);
         test_getpwuid(-1,buflen);
         test_getpwuid(0,buflen);
@@ -156,10 +156,11 @@ int main(int argc, char* argv[])
 
     test_getpwnam(NULL,10);
 
-    for(size_t buflen = 0; buflen < 10000; buflen++){
+    for(size_t buflen = 0; buflen < 100000; buflen+=1024){
         test_getgrnam("kulhanek@META",buflen);
         test_getgrgid(-1,buflen);
         test_getgrgid(0,buflen);
+        test_getgrgid(5000011,buflen);
     }
 
     test_getgrnam(NULL,10);

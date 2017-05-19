@@ -19,6 +19,7 @@ struct trans_func nss_trans;
 
 /* -------------------------------------------------------------------------- */
 
+DLL_EXPORT
 struct trans_func *libnfsidmap_plugin_init()
 {
     nss_trans.name           = "metanfs4";
@@ -41,6 +42,7 @@ struct trans_func *libnfsidmap_plugin_init()
 // #############################################################################
 // -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int name_to_uid(char *name, uid_t *uid)
 {
     int muid = idmap_get_uid(name);
@@ -51,6 +53,7 @@ int name_to_uid(char *name, uid_t *uid)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int name_to_gid(char *name, uid_t *gid)
 {
     int mgid= idmap_get_gid(name);
@@ -61,6 +64,7 @@ int name_to_gid(char *name, uid_t *gid)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 {
     struct passwd *p_pwd = getpwuid(uid);
@@ -71,6 +75,7 @@ int uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 {
     struct group *p_grp = getgrgid(gid);
@@ -81,6 +86,7 @@ int gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
                 extra_mapping_params **ex)
 {
@@ -106,6 +112,7 @@ int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
 
 /* -------------------------------------------------------------------------- */
 
+DLL_LOCAL
 int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
                            int *ngroups, extra_mapping_params **ex)
 {

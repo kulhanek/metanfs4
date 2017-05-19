@@ -48,12 +48,13 @@
     void endpwent(void);
 */
 
-int             _nss_metanfs4_udx   = 0;
-int             _nss_metanfs4_gdx   = 0;
+DLL_LOCAL int             _nss_metanfs4_udx   = 0;
+DLL_LOCAL int             _nss_metanfs4_gdx   = 0;
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *errnop)
+DLL_LOCAL NSS_STATUS
+_setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *errnop)
 {
     int len;
 
@@ -77,7 +78,7 @@ NSS_STATUS _setup_item(char **buffer, size_t *buflen,char** dest, const char* so
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS 
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_setpwent(void)
 {
     _nss_metanfs4_udx = 0;
@@ -86,7 +87,7 @@ _nss_metanfs4_setpwent(void)
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
 {  
     char*       name;
@@ -107,7 +108,7 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS 
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_endpwent(void)
 {  
     _nss_metanfs4_udx = 0;
@@ -116,7 +117,7 @@ _nss_metanfs4_endpwent(void)
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS 
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_setgrent(void)
 {  
     _nss_metanfs4_gdx = 0;
@@ -125,7 +126,7 @@ _nss_metanfs4_setgrent(void)
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int *errnop)
 {
     char*       name;
@@ -147,7 +148,7 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS 
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_endgrent(void)
 {   
     _nss_metanfs4_gdx = 0;
@@ -156,7 +157,7 @@ _nss_metanfs4_endgrent(void)
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                      char *buffer, size_t buflen, int *errnop)
 {
@@ -207,7 +208,7 @@ _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
                      size_t buflen, int *errnop)
 {  
@@ -253,7 +254,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
     int     gid,id,i,ret,len;
@@ -331,7 +332,7 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, s
 
 /* -------------------------------------------------------------------------- */
 
-NSS_STATUS
+DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
     int     id,i,len;
