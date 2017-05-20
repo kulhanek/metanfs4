@@ -56,7 +56,7 @@ DLL_LOCAL int             _nss_metanfs4_gdx   = 0;
 DLL_LOCAL NSS_STATUS
 _setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *errnop)
 {
-    int len;
+    size_t len;
 
     len = strlen(source) + 1;
 
@@ -67,7 +67,6 @@ _setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *
     }
 
     /* copy data and shift in the buffer */
-
     strcpy(*buffer,source);
     (*dest) = (*buffer);
     (*buffer) += len;
@@ -81,7 +80,7 @@ _setup_item(char **buffer, size_t *buflen,char** dest, const char* source, int *
 DLL_EXPORT NSS_STATUS
 _nss_metanfs4_setpwent(void)
 {
-    _nss_metanfs4_udx = 0;
+    _nss_metanfs4_udx = 1;
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -89,21 +88,18 @@ _nss_metanfs4_setpwent(void)
 
 DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int *errnop)
-{  
-    char*       name;
-    NSS_STATUS  ret;
+{     
+    NSS_STATUS          ret;
+    struct SNFS4Message msg;
 
-    _nss_metanfs4_udx++;
-    name = enumerate_name(_nss_metanfs4_udx);
-    if( name != NULL ){
-        ret = _nss_metanfs4_getpwnam_r(name,result,buffer,buflen,errnop);
-        free(name);
-        if( ret != NSS_STATUS_SUCCESS ) _nss_metanfs4_udx--;
-        return(ret);
-    }
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_ENUM_NAME;
+    msg.UID = _nss_metanfs4_udx;
 
-    *errnop = ENOENT;
-    return(NSS_STATUS_NOTFOUND);
+    ret = _nss_metanfs4_getpasswd(&msg,result,buffer,buflen,errnop);
+    if( ret == NSS_STATUS_SUCCESS )  _nss_metanfs4_udx++;
+
+    return(ret);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -120,7 +116,7 @@ _nss_metanfs4_endpwent(void)
 DLL_EXPORT NSS_STATUS
 _nss_metanfs4_setgrent(void)
 {  
-    _nss_metanfs4_gdx = 0;
+    _nss_metanfs4_gdx = 1;
     return(NSS_STATUS_SUCCESS);
 }
 
@@ -129,21 +125,17 @@ _nss_metanfs4_setgrent(void)
 DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    char*       name;
-    NSS_STATUS  ret;
+    NSS_STATUS          ret;
+    struct SNFS4Message msg;
 
-    _nss_metanfs4_gdx++;
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_ENUM_GROUP;
+    msg.GID = _nss_metanfs4_gdx;
 
-    name = enumerate_group(_nss_metanfs4_gdx);
-    if( name != NULL ){
-        ret = _nss_metanfs4_getgrnam_r(name,result,buffer,buflen,errnop);
-        free(name);
-        if( ret != NSS_STATUS_SUCCESS ) _nss_metanfs4_gdx--;
-        return(ret);
-    }
+    ret = _nss_metanfs4_getgroup(&msg,result,buffer,buflen,errnop);
+    if( ret == NSS_STATUS_SUCCESS )  _nss_metanfs4_gdx++;
 
-    *errnop = ENOENT;
-    return(NSS_STATUS_NOTFOUND);
+    return(ret);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -161,49 +153,22 @@ DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwnam_r(const char *name, struct passwd *result,
                      char *buffer, size_t buflen, int *errnop)
 {
-    int         gid;
-    int         uid;
-    NSS_STATUS  ret;
+    struct SNFS4Message msg;
 
-    if( name == NULL ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
+    *errnop = ENOENT;
+
+    if( name == NULL ) return(NSS_STATUS_NOTFOUND);
 
     if( strstr(name,"@") == NULL ){
         /* avoid infinitive loop with idmap */
-        *errnop = ENOENT;
         return(NSS_STATUS_NOTFOUND);
     }
 
-    uid = get_uid(name);
-    if( uid <= 0 ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_NAME_TO_ID;
+    strncpy(msg.Name,name,MAX_NAME);
 
-    gid = get_gid("METANFS4");
-    if( gid <= 0 ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
-
-    /* fill the structure */
-    ret = _setup_item(&buffer,&buflen,&(result->pw_name),name,errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->pw_uid = uid;
-    result->pw_gid = gid;
-    ret = _setup_item(&buffer,&buflen,&(result->pw_gecos),result->pw_name,errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    ret = _setup_item(&buffer,&buflen,&(result->pw_dir),"/dev/null",errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    ret = _setup_item(&buffer,&buflen,&(result->pw_shell),"/dev/null",errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-
-    *errnop = 0;
-    return(NSS_STATUS_SUCCESS);
+    return(_nss_metanfs4_getpasswd(&msg,result,buffer,buflen,errnop));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -212,35 +177,74 @@ DLL_EXPORT NSS_STATUS
 _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
                      size_t buflen, int *errnop)
 {  
-    int         gid;
-    int         len;
-    NSS_STATUS  ret;
-    
-    ret = get_name(uid,buffer,buflen);
-    if( ret < 0 ){
-        *errnop = ENOENT;
+    struct SNFS4Message msg;
+
+    *errnop = ENOENT;
+
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_ID_TO_NAME;
+    msg.UID = uid;
+
+    return(_nss_metanfs4_getpasswd(&msg,result,buffer,buflen,errnop));
+}
+
+/* -------------------------------------------------------------------------- */
+
+DLL_EXPORT NSS_STATUS
+_nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, size_t buflen, int *errnop)
+{
+    struct SNFS4Message msg;
+
+    *errnop = ENOENT;
+
+    if( name == NULL ) return(NSS_STATUS_NOTFOUND);
+
+    if( strstr(name,"@") == NULL ){
+        /* avoid infinitive loop with idmap */
         return(NSS_STATUS_NOTFOUND);
-    }
-    if( ret > 0 ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
     }
 
-    gid = get_gid("METANFS4");
-    if( gid <= 0 ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_GROUP_TO_ID;
+    strncpy(msg.Name,name,MAX_NAME);
+
+    return(_nss_metanfs4_getgroup(&msg,result,buffer,buflen,errnop));
+}
+
+/* -------------------------------------------------------------------------- */
+
+DLL_EXPORT NSS_STATUS
+_nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop)
+{
+    struct SNFS4Message msg;
+
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_ID_TO_GROUP;
+    msg.GID = gid;
+
+    return(_nss_metanfs4_getgroup(&msg,result,buffer,buflen,errnop));
+}
+
+/* -------------------------------------------------------------------------- */
+
+DLL_LOCAL  NSS_STATUS
+_nss_metanfs4_getpasswd(struct SNFS4Message* p_msg, struct passwd *result, char *buffer,
+                     size_t buflen, int *errnop)
+{
+    NSS_STATUS  ret;
+
+    *errnop = ENOENT;
+
+    if( exchange_data(p_msg) != 0 ) return(NSS_STATUS_NOTFOUND);
+    if( p_msg->UID == 0 ) return(NSS_STATUS_NOTFOUND);
 
     /* fill the structure */
-    result->pw_name = buffer;
-    len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
+    ret = _setup_item(&buffer,&buflen,&(result->pw_name),p_msg->Name,errnop);
+    if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->pw_uid = uid;
-    result->pw_gid = gid;
+    result->pw_uid = p_msg->UID;
+    result->pw_gid = p_msg->GID;
     ret = _setup_item(&buffer,&buflen,&(result->pw_gecos),result->pw_name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->pw_dir),"/dev/null",errnop);
@@ -254,151 +258,26 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
 
 /* -------------------------------------------------------------------------- */
 
-DLL_EXPORT NSS_STATUS
-_nss_metanfs4_getgrnam_r(const char *name, struct group *result, char *buffer, size_t buflen, int *errnop)
+DLL_LOCAL NSS_STATUS
+_nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
-    int     gid,id,i,ret,len;
-    char*   p_mem_names;
-    char**  p_mem_list;
+    NSS_STATUS          ret;
 
-    if( name == NULL ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
+    *errnop = ENOENT;
 
-    if( strstr(name,"@") == NULL ){
-        /* avoid infinitive loop with idmap */
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
-
-    gid = get_gid(name);
-    if( gid <= 0 ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
+    if( exchange_data(p_msg) != 0 ) return(NSS_STATUS_NOTFOUND);
+    if( p_msg->GID == 0 ) return(NSS_STATUS_NOTFOUND);
 
     /* fill the structure */
-    ret = _setup_item(&buffer,&buflen,&(result->gr_name),name,errnop);
+    ret = _setup_item(&buffer,&buflen,&(result->gr_name),p_msg->Name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
 
     ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->gr_gid = gid;
+    result->gr_gid = p_msg->GID;
 
     /* members */
-    if( sizeof(char*) > buflen ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
-    }
-    p_mem_names = buffer;
-    id = 0;
-    do{
-        ret = get_group_member(name,id,buffer,buflen);
-        if( ret > 0 ){
-            *errnop = ERANGE;
-            return(NSS_STATUS_TRYAGAIN);
-        }
-        if( ret == 0 ){ 
-            id++;
-            len = strlen(buffer) + 1;
-            buffer += len;
-            buflen -= len;
-        }
-    } while( ret == 0 );
-    
-    p_mem_list = (char**)buffer;
-    result->gr_mem = p_mem_list;    
-    for(i=0; i < id; i++){
-        if( sizeof(char*) > buflen ){
-            *errnop = ERANGE;
-            return(NSS_STATUS_TRYAGAIN);
-        }
-        *p_mem_list = p_mem_names;
-        buflen -= sizeof(char*);
-        p_mem_list++;
-        len = strlen(p_mem_names) + 1;
-        p_mem_names += len;
-    }
-    if( sizeof(char*) > buflen ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
-    }  
-    *p_mem_list = NULL;
-    
-    *errnop = 0;
-    return(NSS_STATUS_SUCCESS);
-}
-
-/* -------------------------------------------------------------------------- */
-
-DLL_EXPORT NSS_STATUS
-_nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop)
-{
-    int     id,i,len;
-    char*   p_mem_names;
-    char**  p_mem_list;
-    
-    int ret;
-    ret = get_group(gid,buffer,buflen);
-    if( ret < 0 ){
-        *errnop = ENOENT;
-        return(NSS_STATUS_NOTFOUND);
-    }
-    if( ret > 0 ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
-    }
-
-    /* fill the structure */
-    result->gr_name = buffer;
-    len = strlen(buffer) + 1;
-    buffer += len;
-    buflen -= len;
-
-    ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->gr_gid = gid;
-
-    /* members */
-    if( sizeof(char*) > buflen ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
-    }
-    p_mem_names = buffer;
-    id = 0;
-    do{
-        ret = get_group_member(result->gr_name,id,buffer,buflen);
-        if( ret > 0 ){
-            *errnop = ERANGE;
-            return(NSS_STATUS_TRYAGAIN);
-        }
-        if( ret == 0 ){ 
-            id++;
-            len = strlen(buffer) + 1;
-            buffer += len;
-            buflen -= len;
-        }
-    } while( ret == 0 );
-    
-    p_mem_list = (char**)buffer;
-    result->gr_mem = p_mem_list;    
-    for(i=0; i < id; i++){
-        if( sizeof(char*) > buflen ){
-            *errnop = ERANGE;
-            return(NSS_STATUS_TRYAGAIN);
-        }
-        *p_mem_list = p_mem_names;
-        buflen -= sizeof(char*);
-        p_mem_list++;
-        len = strlen(p_mem_names) + 1;
-        p_mem_names += len;
-    }
-    if( sizeof(char*) > buflen ){
-        *errnop = ERANGE;
-        return(NSS_STATUS_TRYAGAIN);
-    }  
-    *p_mem_list = NULL;    
+    result->gr_mem = NULL;
 
     *errnop = 0;
     return(NSS_STATUS_SUCCESS);

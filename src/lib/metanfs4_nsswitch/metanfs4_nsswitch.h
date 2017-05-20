@@ -48,4 +48,11 @@ _nss_metanfs4_getgrnam_r(const char *name, struct group *result,
 NSS_STATUS
 _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t buflen, int *errnop);
 
+/* ------------ */
+NSS_STATUS
+_nss_metanfs4_getpasswd(struct SNFS4Message* p_msg, struct passwd *result, char *buffer,
+                     size_t buflen, int *errnop);
+NSS_STATUS
+_nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *buffer, size_t buflen, int *errnop);
+
 #endif

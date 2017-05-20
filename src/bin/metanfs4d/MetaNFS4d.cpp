@@ -54,9 +54,9 @@
 
 // -----------------------------------------------------------------------------
 // global data
-int                     BaseID          = 5000000;
-int                     TopUserID       = 0;
-int                     TopGroupID      = 0;
+unsigned int            BaseID          = 5000000;
+uid_t                   TopUserID       = 0;
+gid_t                   TopGroupID      = 0;
 int                     ServerSocket    = -1;
 bool                    Verbose = false;
 
@@ -68,7 +68,6 @@ std::string             NoGroup         = "nogroup";
 int                     NoGroupID       = -1;
 std::string             PrimaryGroup    = "all@METANFS4";
 int                     PrimaryGroupID  = -1;
-bool                    RootSquash      = true;  // ensure that none operation in MetaNFS4 will result in uid=0 or gid=0
 
 // RootSquesh will not influence sec=sys mounts, which is desired behaviour, see
 // http://redsymbol.net/linux-kernel-boot-parameters/
@@ -90,10 +89,10 @@ bool                    IgnoreIfNotExist = false;
 CSmallString            CacheFileName;
 
 // data storages
-std::map<std::string,int> UserToID;
-std::map<int,std::string> IDToUser;
-std::map<std::string,int> GroupToID;
-std::map<int,std::string> IDToGroup;
+std::map<std::string,uid_t> UserToID;
+std::map<uid_t,std::string> IDToUser;
+std::map<std::string,gid_t> GroupToID;
+std::map<gid_t,std::string> IDToGroup;
 
 // principal mappings
 std::map<std::string,std::string>               PrincipalMap;
@@ -259,7 +258,9 @@ bool load_config(void)
 
     if( config.OpenSection("setup") == true ){
         // all is optional setup
-        config.GetIntegerByKey("BaseID",BaseID);
+        int bi = BaseID;
+        config.GetIntegerByKey("BaseID",bi);
+        BaseID = bi;
         config.GetIntegerByKey("QueueLen",QueueLen);
         config.GetStringByKey("NoBody",NoBody);
         config.GetStringByKey("NoGroup",NoGroup);
@@ -377,9 +378,9 @@ bool load_cache(bool skip)
     while( fin ){
         char        type = '-';
         std::string name;
-        int         nid = -1;
+        unsigned int nid = 0;
         fin >> type >> name >> nid;
-        if( (fin) && (type == 'n') ){
+        if( (fin) && (type == 'n') && (nid > 0) ){
             UserToID[name] = nid;
             IDToUser[nid] = name;
             if( TopUserID < nid ){
@@ -387,7 +388,7 @@ bool load_cache(bool skip)
             }
             num++;
         }
-        if( (fin) && (type == 'g') ){
+        if( (fin) && (type == 'g') && (nid > 0) ){
             GroupToID[name] = nid;
             IDToGroup[nid] = name;
             if( TopGroupID < nid ){
@@ -421,8 +422,8 @@ void save_cache(void)
     if( fout ){
         chmod(CacheFileName,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 
-        std::map<std::string,int>::iterator it = UserToID.begin();
-        std::map<std::string,int>::iterator ie = UserToID.end();
+        std::map<std::string,uid_t>::iterator it = UserToID.begin();
+        std::map<std::string,uid_t>::iterator ie = UserToID.end();
         while( it != ie ){
             fout << "n " << it->first << " " << it->second << std::endl;
             it++;
@@ -588,7 +589,7 @@ bool load_principal_map(void)
         std::vector<std::string> strs;
         boost::split(strs,line,boost::is_any_of(":"));
         if( strs.size() == 2 ){
-            if( (strs[1] == "root") && (RootSquash == true) ) continue;
+            if( strs[1] == "root" ) continue;
             PrincipalMap[strs[0]] = strs[1];
         }
     }
@@ -655,7 +656,7 @@ void start_main_loop(void)
         }
         
         if( Verbose ){
-            syslog(LOG_INFO,"request: type(%d), id(%d), name(%s)",data.Type,data.ID,data.Name);
+            syslog(LOG_INFO,"request: type(%d), uid(%d), gid(%d), name(%s)",data.Type,data.UID,data.GID,data.Name);
         }
 
         // process data --------------------------
@@ -681,26 +682,27 @@ void start_main_loop(void)
                     }
 
                     // perform operation
-                    int         id = 0;
+                    uid_t   uid = 0;
                     std::string name(data.Name);
                     std::string lname;
 
                     if( ! is_domain_local(name,lname) ){
                         // get id
-                        id = UserToID[name];
-                        if( id == 0 ){
+                        uid = UserToID[name];
+                        if( uid == 0 ){
                             // not registered - create new record
                             TopUserID++;
                             UserToID[name] = TopUserID;
                             IDToUser[TopUserID] = name;
-                            id = TopUserID;
+                            uid = TopUserID;
                         }
-                        id = id + BaseID;
+                        uid = uid + BaseID;
                     }
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_REG_NAME;
-                    data.ID = id;
+                    data.UID = uid;
+                    data.NUID = NobodyID;
                     strncpy(data.Name,lname.c_str(),MAX_NAME);
                 }
                 break;
@@ -723,26 +725,27 @@ void start_main_loop(void)
                     }
 
                     // perform operation
-                    int id = 0;
+                    gid_t gid = 0;
                     std::string name(data.Name);
                     std::string lname;
 
                     if( ! is_domain_local(name,lname) ){
                         // get id
-                        id = GroupToID[name];
-                        if( id == 0 ){
+                        gid = GroupToID[name];
+                        if( gid == 0 ){
                             // not registered - create new record
                             TopGroupID++;
                             GroupToID[name] = TopGroupID;
                             IDToGroup[TopGroupID] = name;
-                            id = TopGroupID;
+                            gid = TopGroupID;
                         }
-                        id = id + BaseID;
+                        gid = gid + BaseID;
                     }
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_REG_GROUP;
-                    data.ID = id;
+                    data.GID = gid;
+                    data.NGID = NoGroupID;
                     strncpy(data.Name,lname.c_str(),MAX_NAME);
                 }
                 break;
@@ -759,7 +762,7 @@ void start_main_loop(void)
                     } else {
                         lname = is_princ_local(name);
                     }
-                    int id = -1;
+                    uid_t id = NobodyID;
 
                     if( (! lname.empty()) && (lname.find("@") == std::string::npos) ){
                         struct passwd *p_pwd = getpwnam(lname.c_str());  // only LOCAL query!!!
@@ -768,13 +771,9 @@ void start_main_loop(void)
                         }
                     }
 
-                    if( (id == 0) && (RootSquash == true) ){
-                        id = NobodyID;
-                    }
-
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_PRINC_TO_ID;
-                    data.ID = id;
+                    data.UID = id;
                 }
                 break;
 
@@ -782,7 +781,7 @@ void start_main_loop(void)
 
                     std::string name(data.Name);
 
-                    if( (name == "root") && (RootSquash == true) ){
+                    if( name == "root" ){
                         name = NoBody;
                     } else {
                         map_to_localdomain_ifnecessary(name);
@@ -798,7 +797,7 @@ void start_main_loop(void)
 
                     std::string name(data.Name);
 
-                    if( (name == "root") && (RootSquash == true) ){
+                    if( name == "root" ){
                         name = NoGroup;
                     } else {
                         map_to_localdomain_ifnecessary(name);
@@ -811,150 +810,91 @@ void start_main_loop(void)
                 break;
                 
                 case MSG_ID_TO_NAME:{
-                    if( data.ID == NobodyID ){
-                        strncpy(data.Name,NoBody.c_str(),MAX_NAME);
-                    } else {
-                        // get relevant data
-                        int id = data.ID - BaseID;
-                        // prepare response
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_INVALID;
-                        std::string name = IDToUser[id];
+                    uid_t uid = data.UID;
+                    memset(&data,0,sizeof(data));
+                    if( uid > BaseID ){
+                        std::string name = IDToUser[uid - BaseID];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_NAME;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
+                            data.UID = uid;
+                            data.GID = PrimaryGroupID;
                         }
                     }
                 }
                 break;
 
                 case MSG_NAME_TO_ID:{
-                    // get relevant data
                     std::string name(data.Name);
-                    // prepare response
+                    uid_t id = UserToID[name];
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_NAME_TO_ID;
-                    if( name == "NOBODY" ){
-                        data.ID = NobodyID;
-                    } else {
-                        int id = UserToID[name];
-                        if( id > 0 ) {
-                            data.ID = id + BaseID;
-                        } else {
-                            data.ID = -1;
-                        }
-                    }
-                    if( (data.ID == 0) && (RootSquash == true) ){
-                        data.ID = NobodyID;
+                    if( id > 0 ) {
+                        id = id + BaseID;
+                        data.Type = MSG_NAME_TO_ID;
+                        strncpy(data.Name,name.c_str(),MAX_NAME);
+                        data.UID = id;
+                        data.GID = PrimaryGroupID;
                     }
                 }
                 break;
 
                 case MSG_ID_TO_GROUP:{
-                    if( data.ID == NoGroupID ){
-                        strncpy(data.Name,NoGroup.c_str(),MAX_NAME);
-                    } else {
-                        // get relevant data
-                        int id = data.ID - BaseID;
-                        // prepare response
-                        memset(&data,0,sizeof(data));
-                        data.Type = MSG_INVALID;
-                        std::string name = IDToGroup[id];
+                    gid_t gid = data.GID;
+                    memset(&data,0,sizeof(data));
+                    if( gid > BaseID ) {
+                        std::string name = IDToGroup[gid-BaseID];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
+                            data.GID = gid;
                         }
                     }
                 }
                 break;
 
                 case MSG_GROUP_TO_ID:{
-                    // get relevant data
                     std::string name(data.Name);
-                    // prepare response
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_GROUP_TO_ID;
-                    if( name == "NOGROUP" ){
-                        data.ID = NoGroupID;
-                    } else if( name == "METANFS4" ) {
-                        data.ID = PrimaryGroupID;
-                    } else {
-                        int id = GroupToID[name];
-                        if( id > 0 ) {
-                            data.ID = id + BaseID;
-                        } else {
-                            data.ID = -1;
-                        }
-                    }
-                    if( (data.ID == 0) && (RootSquash == true) ){
-                        data.ID = NobodyID;
+                    gid_t id = GroupToID[name];
+                    if( id > 0 ) {
+                        data.Type = MSG_GROUP_TO_ID;
+                        strncpy(data.Name,name.c_str(),MAX_NAME);
+                        data.GID = id + BaseID;
                     }
                 }
                 break;
 
                 case MSG_ENUM_NAME:{
-
-                    reload_group();
-
-                    int id = data.ID;
+                    reload_group();      
+                    uid_t id = data.UID;
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_ENUM_NAME;
                     if( (id >= 1) && (id <= TopUserID) ){
-                        data.ID = id;
                         std::string name = IDToUser[id];
                         if( ! name.empty() ) {
+                            data.Type = MSG_ENUM_NAME;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
+                            data.UID = id+BaseID;
+                            data.GID = PrimaryGroupID;
                         }
-                    } else {
-                        data.ID = -1;
                     }
                 }
                 break;
 
                 case MSG_ENUM_GROUP:{
-
                     reload_group();
-
-                    int id = data.ID;
+                    gid_t id = data.GID;
                     memset(&data,0,sizeof(data));
-                    data.Type = MSG_ENUM_GROUP;
-                    if( (id >= 1) && (id <= TopGroupID) ){
-                        data.ID = id;
+                    if(  (id >= 1) && (id <= TopGroupID) ) {
                         std::string name = IDToGroup[id];
                         if( ! name.empty() ) {
+                            data.Type = MSG_ENUM_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
+                            data.GID = id + BaseID;
                         }
-                    } else {
-                        data.ID = -1;
                     }
                 }
                 break;
                 
-                case MSG_GROUP_MEMBER:{
-
-                    reload_group();
-
-                    data.Type = MSG_INVALID;
-                    std::string gname(data.Name);
-                    int mid = data.ID;
-                    memset(&data,0,sizeof(data));
-                    std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(gname);
-                    if( git != GroupMembers.end() ){
-                        std::set<std::string>::iterator uit = git->second.begin();
-                        for(int i=0; i < mid; i++){
-                            if( uit == git->second.end() ) break;
-                            uit++;
-                        }
-                        if( uit != git->second.end() ){
-                            std::string name = *uit;
-                            data.Type = MSG_GROUP_MEMBER;
-                            data.ID = 0;
-                            strncpy(data.Name,name.c_str(),MAX_NAME);
-                        }
-                    }
-                }
-                break;                
-
                 default:
                     memset(&data,0,sizeof(data));
                 break;
@@ -965,7 +905,7 @@ void start_main_loop(void)
         }
         
         if( Verbose ){
-            syslog(LOG_INFO,"response: type(%d), id(%d), name(%s)",data.Type,data.ID,data.Name);
+            syslog(LOG_INFO,"response: type(%d), uid(%d), gid(%d), name(%s)",data.Type,data.UID,data.GID,data.Name);
         }        
 
         // send response -------------------------
@@ -1067,7 +1007,7 @@ int GetOrRegisterUser(const std::string& name)
     // try local account
     struct passwd * p_pw = getpwnam(name.c_str());
     if( p_pw == NULL ) return(-1);
-    if( (p_pw->pw_uid == 0) && (RootSquash == true) ) return(-1);
+    if( p_pw->pw_uid == 0 ) return(-1);
     return( p_pw->pw_uid );
 }
 
@@ -1089,7 +1029,7 @@ int GetOrRegisterGroup(const std::string& name)
     // try local account
     struct group * p_gr = getgrnam(name.c_str());
     if( p_gr == NULL ) return(-1);
-    if( (p_gr->gr_gid == 0) && (RootSquash == true) ) return(-1);
+    if( p_gr->gr_gid == 0 ) return(-1);
     return( p_gr->gr_gid );
 }
 

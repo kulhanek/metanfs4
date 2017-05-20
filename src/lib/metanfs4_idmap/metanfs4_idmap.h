@@ -31,8 +31,8 @@ struct trans_func {
 
 /* ------------ */
 
-int name_to_uid(char *name, uid_t *uid);
-int name_to_gid(char *name, uid_t *gid);
+int idmap_get_uid(char* name,uid_t* uid);
+int idmap_get_gid(char* name,gid_t* gid);
 
 /* ------------ */
 
