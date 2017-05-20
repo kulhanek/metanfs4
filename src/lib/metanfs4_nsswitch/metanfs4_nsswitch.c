@@ -262,6 +262,7 @@ DLL_LOCAL NSS_STATUS
 _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
     NSS_STATUS          ret;
+    static char*        ptr = NULL;
 
     *errnop = ENOENT;
 
@@ -271,13 +272,12 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
     /* fill the structure */
     ret = _setup_item(&buffer,&buflen,&(result->gr_name),p_msg->Name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
-
     ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     result->gr_gid = p_msg->GID;
 
     /* members */
-    result->gr_mem = NULL;
+    result->gr_mem = &ptr;
 
     *errnop = 0;
     return(NSS_STATUS_SUCCESS);
