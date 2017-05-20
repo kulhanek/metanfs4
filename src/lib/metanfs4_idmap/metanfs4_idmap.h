@@ -47,4 +47,9 @@ int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
 int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
                            int *ngroups, extra_mapping_params **ex);
 
+/* ------------ */
+
+int idmap_user_to_local_domain(const char* name,char* lname,int len);
+int idmap_group_to_local_domain(const char* name,char* lname,int len);
+
 #endif

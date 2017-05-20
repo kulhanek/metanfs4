@@ -656,7 +656,7 @@ void start_main_loop(void)
         }
         
         if( Verbose ){
-            syslog(LOG_INFO,"request: type(%d), uid(%d), gid(%d), name(%s)",data.Type,data.UID,data.GID,data.Name);
+            syslog(LOG_INFO,"request: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.ID.UID,data.Name);
         }
 
         // process data --------------------------
@@ -701,8 +701,8 @@ void start_main_loop(void)
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_REG_NAME;
-                    data.UID = uid;
-                    data.NUID = NobodyID;
+                    data.ID.UID = uid;
+                    data.Extra.UID = NobodyID;
                     strncpy(data.Name,lname.c_str(),MAX_NAME);
                 }
                 break;
@@ -744,8 +744,8 @@ void start_main_loop(void)
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_REG_GROUP;
-                    data.GID = gid;
-                    data.NGID = NoGroupID;
+                    data.ID.GID = gid;
+                    data.Extra.GID = NoGroupID;
                     strncpy(data.Name,lname.c_str(),MAX_NAME);
                 }
                 break;
@@ -773,7 +773,7 @@ void start_main_loop(void)
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_PRINC_TO_ID;
-                    data.UID = id;
+                    data.ID.UID = id;
                 }
                 break;
 
@@ -810,15 +810,15 @@ void start_main_loop(void)
                 break;
                 
                 case MSG_ID_TO_NAME:{
-                    uid_t uid = data.UID;
+                    uid_t uid = data.ID.UID;
                     memset(&data,0,sizeof(data));
                     if( uid > BaseID ){
                         std::string name = IDToUser[uid - BaseID];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_NAME;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
-                            data.UID = uid;
-                            data.GID = PrimaryGroupID;
+                            data.ID.UID = uid;
+                            data.Extra.GID = PrimaryGroupID;
                         }
                     }
                 }
@@ -832,21 +832,21 @@ void start_main_loop(void)
                         id = id + BaseID;
                         data.Type = MSG_NAME_TO_ID;
                         strncpy(data.Name,name.c_str(),MAX_NAME);
-                        data.UID = id;
-                        data.GID = PrimaryGroupID;
+                        data.ID.UID = id;
+                        data.Extra.GID = PrimaryGroupID;
                     }
                 }
                 break;
 
                 case MSG_ID_TO_GROUP:{
-                    gid_t gid = data.GID;
+                    gid_t gid = data.ID.GID;
                     memset(&data,0,sizeof(data));
                     if( gid > BaseID ) {
                         std::string name = IDToGroup[gid-BaseID];
                         if( ! name.empty() ) {
                             data.Type = MSG_ID_TO_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
-                            data.GID = gid;
+                            data.ID.GID = gid;
                         }
                     }
                 }
@@ -859,22 +859,22 @@ void start_main_loop(void)
                     if( id > 0 ) {
                         data.Type = MSG_GROUP_TO_ID;
                         strncpy(data.Name,name.c_str(),MAX_NAME);
-                        data.GID = id + BaseID;
+                        data.ID.GID = id + BaseID;
                     }
                 }
                 break;
 
                 case MSG_ENUM_NAME:{
                     reload_group();      
-                    uid_t id = data.UID;
+                    uid_t id = data.ID.UID;
                     memset(&data,0,sizeof(data));
                     if( (id >= 1) && (id <= TopUserID) ){
                         std::string name = IDToUser[id];
                         if( ! name.empty() ) {
                             data.Type = MSG_ENUM_NAME;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
-                            data.UID = id+BaseID;
-                            data.GID = PrimaryGroupID;
+                            data.ID.UID = id+BaseID;
+                            data.Extra.GID = PrimaryGroupID;
                         }
                     }
                 }
@@ -882,14 +882,14 @@ void start_main_loop(void)
 
                 case MSG_ENUM_GROUP:{
                     reload_group();
-                    gid_t id = data.GID;
+                    gid_t id = data.ID.GID;
                     memset(&data,0,sizeof(data));
                     if(  (id >= 1) && (id <= TopGroupID) ) {
                         std::string name = IDToGroup[id];
                         if( ! name.empty() ) {
                             data.Type = MSG_ENUM_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
-                            data.GID = id + BaseID;
+                            data.ID.GID = id + BaseID;
                         }
                     }
                 }
@@ -905,7 +905,7 @@ void start_main_loop(void)
         }
         
         if( Verbose ){
-            syslog(LOG_INFO,"response: type(%d), uid(%d), gid(%d), name(%s)",data.Type,data.UID,data.GID,data.Name);
+            syslog(LOG_INFO,"response: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.Extra.UID,data.Name);
         }        
 
         // send response -------------------------

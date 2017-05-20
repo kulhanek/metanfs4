@@ -94,7 +94,7 @@ _nss_metanfs4_getpwent_r(struct passwd *result, char *buffer, size_t buflen, int
 
     memset(&msg,0,sizeof(msg));
     msg.Type = MSG_ENUM_NAME;
-    msg.UID = _nss_metanfs4_udx;
+    msg.ID.UID = _nss_metanfs4_udx;
 
     ret = _nss_metanfs4_getpasswd(&msg,result,buffer,buflen,errnop);
     if( ret == NSS_STATUS_SUCCESS )  _nss_metanfs4_udx++;
@@ -130,7 +130,7 @@ _nss_metanfs4_getgrent_r(struct group *result, char *buffer, size_t buflen, int 
 
     memset(&msg,0,sizeof(msg));
     msg.Type = MSG_ENUM_GROUP;
-    msg.GID = _nss_metanfs4_gdx;
+    msg.ID.GID = _nss_metanfs4_gdx;
 
     ret = _nss_metanfs4_getgroup(&msg,result,buffer,buflen,errnop);
     if( ret == NSS_STATUS_SUCCESS )  _nss_metanfs4_gdx++;
@@ -183,7 +183,7 @@ _nss_metanfs4_getpwuid_r(uid_t uid, struct passwd *result, char *buffer,
 
     memset(&msg,0,sizeof(msg));
     msg.Type = MSG_ID_TO_NAME;
-    msg.UID = uid;
+    msg.ID.UID = uid;
 
     return(_nss_metanfs4_getpasswd(&msg,result,buffer,buflen,errnop));
 }
@@ -220,7 +220,7 @@ _nss_metanfs4_getgrgid_r(gid_t gid, struct group *result, char *buffer, size_t b
 
     memset(&msg,0,sizeof(msg));
     msg.Type = MSG_ID_TO_GROUP;
-    msg.GID = gid;
+    msg.ID.GID = gid;
 
     return(_nss_metanfs4_getgroup(&msg,result,buffer,buflen,errnop));
 }
@@ -236,15 +236,15 @@ _nss_metanfs4_getpasswd(struct SNFS4Message* p_msg, struct passwd *result, char 
     *errnop = ENOENT;
 
     if( exchange_data(p_msg) != 0 ) return(NSS_STATUS_NOTFOUND);
-    if( p_msg->UID == 0 ) return(NSS_STATUS_NOTFOUND);
+    if( p_msg->ID.UID == 0 ) return(NSS_STATUS_NOTFOUND);
 
     /* fill the structure */
     ret = _setup_item(&buffer,&buflen,&(result->pw_name),p_msg->Name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->pw_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->pw_uid = p_msg->UID;
-    result->pw_gid = p_msg->GID;
+    result->pw_uid = p_msg->ID.UID;
+    result->pw_gid = p_msg->Extra.GID;
     ret = _setup_item(&buffer,&buflen,&(result->pw_gecos),result->pw_name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->pw_dir),"/dev/null",errnop);
@@ -267,14 +267,14 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
     *errnop = ENOENT;
 
     if( exchange_data(p_msg) != 0 ) return(NSS_STATUS_NOTFOUND);
-    if( p_msg->GID == 0 ) return(NSS_STATUS_NOTFOUND);
+    if( p_msg->ID.GID == 0 ) return(NSS_STATUS_NOTFOUND);
 
     /* fill the structure */
     ret = _setup_item(&buffer,&buflen,&(result->gr_name),p_msg->Name,errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
-    result->gr_gid = p_msg->GID;
+    result->gr_gid = p_msg->ID.GID;
 
     /* members */
     result->gr_mem = &ptr;

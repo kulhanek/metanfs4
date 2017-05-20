@@ -55,8 +55,8 @@ int idmap_get_uid(char* name,uid_t* uid)
 
     if( exchange_data(&data) != 0 ) return(-ENOENT);
 
-    if( data.UID > 0 ){
-        (*uid) = data.UID;
+    if( data.ID.UID > 0 ){
+        (*uid) = data.ID.UID;
         return(0);
     }
 
@@ -68,7 +68,7 @@ int idmap_get_uid(char* name,uid_t* uid)
     }
 
     /* return nobody - already received in datagram */
-    (*uid) = data.NUID;
+    (*uid) = data.Extra.UID;
     return(0);
 }
 /* -------------------------------------------------------------------------- */
@@ -85,8 +85,8 @@ int idmap_get_gid(char *name, uid_t *gid)
 
     if( exchange_data(&data) != 0 ) return(-ENOENT);
 
-    if( data.GID > 0 ){
-        (*gid) = data.GID;
+    if( data.ID.GID > 0 ){
+        (*gid) = data.ID.GID;
         return(0);
     }
 
@@ -98,7 +98,7 @@ int idmap_get_gid(char *name, uid_t *gid)
     }
 
     /* return nogroup - already received in datagram */
-    (*gid) = data.NGID;
+    (*gid) = data.Extra.GID;
     return(0);
 }
 
@@ -142,8 +142,8 @@ int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
 
     if( exchange_data(&data) != 0 ) return(-ENOENT);
 
-    (*uid) = data.UID;
-    (*gid) = data.GID;
+    (*uid) = data.ID.UID;
+    (*gid) = data.Extra.GID;
     return(0);
 }
 
@@ -167,6 +167,46 @@ int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
 
       get groups
     if (getgrouplist(p_pw->pw_name, p_pw->pw_gid, groups, ngroups) < 0) return(-ERANGE); */
+
+    return(0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+DLL_LOCAL
+int idmap_user_to_local_domain(const char* name, char* lname, int len)
+{
+    struct SNFS4Message data;
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
+    strncpy(data.Name,name,MAX_NAME);
+
+    if( exchange_data(&data) != 0 ) return(-ENOENT);
+
+    data.Name[MAX_NAME] = '\0';
+    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
+    strcpy(lname,data.Name);
+
+    return(0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+DLL_LOCAL
+int idmap_group_to_local_domain(const char* name, char* lname, int len)
+{
+    struct SNFS4Message data;
+
+    memset(&data,0,sizeof(data));
+    data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
+    strncpy(data.Name,name,MAX_NAME);
+
+    if( exchange_data(&data) != 0 ) return(-ENOENT);
+
+    data.Name[MAX_NAME] = '\0';
+    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
+    strcpy(lname,data.Name);
 
     return(0);
 }

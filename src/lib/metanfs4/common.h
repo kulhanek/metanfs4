@@ -67,22 +67,21 @@
 /* message structure */
 struct SNFS4Message {
     int     Type;
-    uid_t   UID;
-    gid_t   GID;
-    uid_t   NUID;
-    gid_t   NGID;
-    size_t  Len;
+    union Primary {
+        uid_t   UID;
+        gid_t   GID;
+    } ID;
+    union Supplementary {
+        uid_t   UID;
+        gid_t   GID;
+        size_t  Len;
+    } Extra;
     char    Name[MAX_NAME+1];
 };
 
 /* common methods ----------------------------------------------------------- */
 
 int exchange_data(struct SNFS4Message* p_msg);
-
-/* common methods ----------------------------------------------------------- */
-/* idmap */
-int idmap_user_to_local_domain(const char* name,char* lname,int len);
-int idmap_group_to_local_domain(const char* name,char* lname,int len);
 
 /* -------------------------------------------------------------------------- */
 #endif

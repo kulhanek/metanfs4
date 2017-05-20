@@ -61,44 +61,4 @@ int exchange_data(struct SNFS4Message* p_msg)
 
 /* -------------------------------------------------------------------------- */
 
-DLL_LOCAL
-int idmap_user_to_local_domain(const char* name, char* lname, int len)
-{
-    struct SNFS4Message data;
-
-    memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_USER_TO_LOCAL_DOMAIN;
-    strncpy(data.Name,name,MAX_NAME);
-
-    if( exchange_data(&data) != 0 ) return(-ENOENT);
-
-    data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
-    strcpy(lname,data.Name);
-
-    return(0);
-}
-
-/* -------------------------------------------------------------------------- */
-
-DLL_LOCAL
-int idmap_group_to_local_domain(const char* name, char* lname, int len)
-{
-    struct SNFS4Message data;
-
-    memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_GROUP_TO_LOCAL_DOMAIN;
-    strncpy(data.Name,name,MAX_NAME);
-
-    if( exchange_data(&data) != 0 ) return(-ENOENT);
-
-    data.Name[MAX_NAME] = '\0';
-    if( strlen(data.Name) + 1 > len ) return(-ERANGE);
-    strcpy(lname,data.Name);
-
-    return(0);
-}
-
-/* -------------------------------------------------------------------------- */
-
 
