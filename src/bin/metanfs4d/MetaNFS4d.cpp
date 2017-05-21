@@ -659,7 +659,7 @@ void start_main_loop(void)
         }
         
         if( Verbose ){
-            syslog(LOG_INFO,"request: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.ID.UID,data.Name);
+            syslog(LOG_INFO,"request: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.Extra.UID,data.Name);
         }
 
         // supplementary data
@@ -1067,7 +1067,8 @@ void generate_group_list(const std::string& gname,std::string& extra_data,size_t
         std::set<std::string>::iterator ie = git->second.end();
         std::stringstream sextra;
         while( it != ie ){
-            sextra << *it << "\0";
+            std::string name(*it);
+            sextra.write(name.c_str(),name.size()+1);
             it++;
         }
         sextra << "\0";
