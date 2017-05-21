@@ -1071,8 +1071,6 @@ void generate_group_list(const std::string& gname,std::string& extra_data,size_t
             sextra.write(name.c_str(),name.size()+1);
             it++;
         }
-        char term = '\0';
-        sextra.write(&term,1);
         extra_data = sextra.str();
         len = extra_data.length();
     }

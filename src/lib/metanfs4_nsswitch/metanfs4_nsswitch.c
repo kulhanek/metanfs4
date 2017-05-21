@@ -323,8 +323,8 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
     result->gr_gid = p_msg->ID.GID;
 
     /* read members */
-    memlen = p_msg->Len;
-    numofmems = p_msg->Extra.GID;
+    memlen = p_msg->Len; /* zero terminated names */
+    numofmems = p_msg->Extra.GID; /* number of mebers */
 
     p_member = buffer;
 
