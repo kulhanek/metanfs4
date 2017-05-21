@@ -33,7 +33,10 @@ int exchange_data(struct SNFS4Message* p_msg)
 
     addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
 
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(-1);
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 ){
+        close(clisckt);
+        return(-1);
+    }
 
     type = p_msg->Type;
 

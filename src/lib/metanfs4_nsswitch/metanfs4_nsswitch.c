@@ -265,7 +265,10 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
 
     addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
 
-    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NSS_STATUS_NOTFOUND);
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 ){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
 
     type = p_msg->Type;
 
@@ -296,9 +299,15 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
 
     /* fill the structure */
     ret = _setup_item(&buffer,&buflen,&(result->gr_name),p_msg->Name,errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret != NSS_STATUS_SUCCESS ){
+        close(clisckt);
+        return(ret);
+    }
     ret = _setup_item(&buffer,&buflen,&(result->gr_passwd),"x",errnop);
-    if( ret != NSS_STATUS_SUCCESS ) return(ret);
+    if( ret != NSS_STATUS_SUCCESS ){
+        close(clisckt);
+        return(ret);
+    }
     result->gr_gid = p_msg->ID.GID;
 
     /* read members */
@@ -309,6 +318,7 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
 
     if( memlen + sizeof(char*)*(numofmems+1) > buflen ) {
         *errnop = ERANGE;
+        close(clisckt);
         return(NSS_STATUS_TRYAGAIN);
     }
     if( read(clisckt,buffer,memlen) != memlen ){
@@ -322,10 +332,12 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
 
     result->gr_mem = (char**)buffer;
 
-    for(i = 0; i < numofmems; i++){
+    i = 0;
+    while(i < numofmems){
         result->gr_mem[i] =  p_member;
         len = strlen(p_member) + 1;
         p_member += len;
+        i++;
     }
     result->gr_mem[i] =  NULL;
 

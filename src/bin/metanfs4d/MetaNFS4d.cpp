@@ -850,6 +850,22 @@ void start_main_loop(void)
                 }
                 break;
 
+                case MSG_ENUM_NAME:{
+                    reload_group();
+                    uid_t id = data.ID.UID;
+                    memset(&data,0,sizeof(data));
+                    if( (id >= 1) && (id <= TopUserID) ){
+                        std::string name = IDToUser[id];
+                        if( ! name.empty() ) {
+                            data.Type = MSG_ENUM_NAME;
+                            strncpy(data.Name,name.c_str(),MAX_NAME);
+                            data.ID.UID = id+BaseID;
+                            data.Extra.GID = PrimaryGroupID;
+                        }
+                    }
+                }
+                break;
+
                 case MSG_ID_TO_GROUP:{
                     gid_t gid = data.ID.GID;
                     memset(&data,0,sizeof(data));
@@ -874,22 +890,6 @@ void start_main_loop(void)
                         strncpy(data.Name,name.c_str(),MAX_NAME);
                         data.ID.GID = id + BaseID;
                         generate_group_list(name,extra_data,data.Len,data.Extra.GID);
-                    }
-                }
-                break;
-
-                case MSG_ENUM_NAME:{
-                    reload_group();      
-                    uid_t id = data.ID.UID;
-                    memset(&data,0,sizeof(data));
-                    if( (id >= 1) && (id <= TopUserID) ){
-                        std::string name = IDToUser[id];
-                        if( ! name.empty() ) {
-                            data.Type = MSG_ENUM_NAME;
-                            strncpy(data.Name,name.c_str(),MAX_NAME);
-                            data.ID.UID = id+BaseID;
-                            data.Extra.GID = PrimaryGroupID;
-                        }
                     }
                 }
                 break;
