@@ -768,23 +768,24 @@ void start_main_loop(void)
                     } else {
                         lname = is_princ_local(name);
                     }
-                    uid_t uid = 0;
-                    gid_t gid = 0;
+
+                    memset(&data,0,sizeof(data));
+                    data.Type = MSG_IDMAP_PRINC_TO_ID;
 
                     if( (! lname.empty()) && (lname.find("@") == std::string::npos) ){
                         struct passwd *p_pwd = getpwnam(lname.c_str());  // only LOCAL query!!!
                         if( p_pwd != NULL ){
-                            uid = p_pwd->pw_uid;
-                            gid = p_pwd->pw_gid;
+                            strncpy(data.Name,lname.c_str(),MAX_NAME);
+                            data.ID.UID = p_pwd->pw_uid;
+                            data.Extra.GID = p_pwd->pw_gid;
                         }
                     }
-                    if( uid == 0 ) uid = NobodyID;
-                    if( gid == 0 ) gid = NoGroupID;
-
-                    memset(&data,0,sizeof(data));
-                    data.Type = MSG_IDMAP_PRINC_TO_ID;
-                    data.ID.UID = uid;
-                    data.Extra.GID = gid;
+                    // root squash
+                    if( (data.ID.UID == 0) || (data.Extra.GID == 0) ){
+                        strncpy(data.Name,NoBody.c_str(),MAX_NAME);
+                        data.ID.UID = NobodyID;
+                        data.Extra.GID = NoGroupID;
+                    }
                 }
                 break;
 

@@ -45,30 +45,30 @@ struct trans_func *libnfsidmap_plugin_init()
 DLL_LOCAL
 int idmap_get_uid(char* name,uid_t* uid)
 {
-    struct SNFS4Message data;
+    struct SNFS4Message msg;
     struct passwd*      p_pwd;
 
-    memset(&data,0,sizeof(data));
+    memset(&msg,0,sizeof(msg));
 
-    data.Type = MSG_IDMAP_REG_NAME;
-    strncpy(data.Name,name,MAX_NAME);
+    msg.Type = MSG_IDMAP_REG_NAME;
+    strncpy(msg.Name,name,MAX_NAME);
 
-    if( exchange_data(&data) != 0 ) return(-ENOENT);
+    if( exchange_data(&msg) != 0 ) return(-ENOENT);
 
-    if( data.ID.UID > 0 ){
-        (*uid) = data.ID.UID;
+    if( msg.ID.UID > 0 ){
+        (*uid) = msg.ID.UID;
         return(0);
     }
 
     /* ask for local uid */
-    p_pwd = getpwnam(data.Name);  /* data.Name contains local name */
+    p_pwd = getpwnam(msg.Name);  /* data.Name contains local name */
     if( p_pwd != NULL ){
         (*uid) = p_pwd->pw_uid;
         return(0);
     }
 
     /* return nobody - already received in datagram */
-    (*uid) = data.Extra.UID;
+    (*uid) = msg.Extra.UID;
     return(0);
 }
 /* -------------------------------------------------------------------------- */
@@ -76,29 +76,29 @@ int idmap_get_uid(char* name,uid_t* uid)
 DLL_LOCAL
 int idmap_get_gid(char *name, uid_t *gid)
 {
-    struct SNFS4Message data;
+    struct SNFS4Message msg;
     struct group*       p_grp;
 
-    memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_REG_GROUP;
-    strncpy(data.Name,name,MAX_NAME);
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_IDMAP_REG_GROUP;
+    strncpy(msg.Name,name,MAX_NAME);
 
-    if( exchange_data(&data) != 0 ) return(-ENOENT);
+    if( exchange_data(&msg) != 0 ) return(-ENOENT);
 
-    if( data.ID.GID > 0 ){
-        (*gid) = data.ID.GID;
+    if( msg.ID.GID > 0 ){
+        (*gid) = msg.ID.GID;
         return(0);
     }
 
     /* ask for local gid */
-    p_grp = getgrnam(data.Name);   /* data.Name contains local name */
+    p_grp = getgrnam(msg.Name);   /* data.Name contains local name */
     if( p_grp != NULL ){
         (*gid) = p_grp->gr_gid;
         return(0);
     }
 
     /* return nogroup - already received in datagram */
-    (*gid) = data.Extra.GID;
+    (*gid) = msg.Extra.GID;
     return(0);
 }
 
@@ -130,20 +130,20 @@ DLL_LOCAL
 int princ_to_ids(char *secname, char *princ, uid_t *uid, gid_t *gid,
                 extra_mapping_params **ex)
 {
-    struct SNFS4Message data;
+    struct SNFS4Message msg;
 
     /* check allowed security contexts */
     if (strcmp(secname, "spkm3") == 0) return(-ENOENT);
     if (strcmp(secname, "krb5") != 0) return(-EINVAL);
 
-    memset(&data,0,sizeof(data));
-    data.Type = MSG_IDMAP_PRINC_TO_ID;
-    strncpy(data.Name,princ,MAX_NAME);
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_IDMAP_PRINC_TO_ID;
+    strncpy(msg.Name,princ,MAX_NAME);
 
-    if( exchange_data(&data) != 0 ) return(-ENOENT);
+    if( exchange_data(&msg) != 0 ) return(-ENOENT);
 
-    (*uid) = data.ID.UID;
-    (*gid) = data.Extra.GID;
+    (*uid) = msg.ID.UID;
+    (*gid) = msg.Extra.GID;
     return(0);
 }
 
@@ -153,20 +153,18 @@ DLL_LOCAL
 int gss_princ_to_grouplist(char *secname, char *princ, gid_t *groups,
                            int *ngroups, extra_mapping_params **ex)
 {
+    struct SNFS4Message msg;
 
     /* check allowed security contexts */
     if (strcmp(secname, "krb5") != 0) return(-EINVAL);
-/*
-     get principal uid
-    muid = idmap_get_princ_uid(princ);
-    if( muid < 0 ) return(-ENOENT);
 
-     get user info
-    p_pw = getpwuid(muid);
-    if( p_pw == NULL ) return(-ENOENT);
+    memset(&msg,0,sizeof(msg));
+    msg.Type = MSG_IDMAP_PRINC_TO_ID;
+    strncpy(msg.Name,princ,MAX_NAME);
 
-      get groups
-    if (getgrouplist(p_pw->pw_name, p_pw->pw_gid, groups, ngroups) < 0) return(-ERANGE); */
+    if( exchange_data(&msg) != 0 ) return(-ENOENT);
+
+    if (getgrouplist(msg.Name, msg.Extra.GID, groups, ngroups) < 0) return(-ERANGE);
 
     return(0);
 }

@@ -18,27 +18,6 @@
   Documentation:
   https://www.gnu.org/software/libc/manual/html_node/Extending-NSS.html#Extending-NSS
 
-  sigv?
-  https://github.com/lattera/glibc/blob/master/grp/compat-initgroups.c
-  in
-
-#0  __GI___libc_free (mem=mem@entry=0x4037376a6f6b7261) at malloc.c:2929
-        ar_ptr = <optimized out>
-        p = <optimized out>
-        hook = 0x0
-#1  0x00007fd6486eda69 in compat_call (nip=<optimized out>, user=<optimized out>, group=4281413, start=0x64656d6968637261, size=0x4154454d407573, groupsp=0x617261004154454d, limit=6989658451874758772, errnop=<optimized out>) at compat-initgroups.c:120
-        grpbuf = {gr_name = 0x6d7261004154454d <error: Cannot access memory at address 0x6d7261004154454d>, gr_passwd = 0x454d406b6564616c <error: Cannot access memory at address 0x454d406b6564616c>, gr_gid = 1627406676, gr_mem = 0x61004154454d4074}
-        buflen = <optimized out>
-        status = <optimized out>
-        setgrent_fct = <optimized out>
-        getgrent_fct = 0x7fd6475910eb <_setup_item+86>
-        endgrent_fct = 0x40796b7375686172
-        groups = <optimized out>
-        tmpbuf = 0x4037376a6f6b7261 <error: Cannot access memory at address 0x4037376a6f6b7261>
-        use_malloc = 77
-        result = NSS_STATUS_SUCCESS
-
-
 */
 
 /* -------------------------------------------------------------------------- */
