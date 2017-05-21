@@ -140,6 +140,9 @@ const std::string can_user_be_local(const std::string &name);
 int GetOrRegisterUser(const std::string& name);
 int GetOrRegisterGroup(const std::string& name);
 
+// generate group list
+void generate_group_list(const std::string& gname,std::string& extra_data,size_t& len,gid_t& num);
+
 // -----------------------------------------------------------------------------
 
 int main(int argc,char* argv[])
@@ -855,6 +858,7 @@ void start_main_loop(void)
                             data.Type = MSG_ID_TO_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
                             data.ID.GID = gid;
+                            generate_group_list(name,extra_data,data.Len,data.Extra.GID);
                         }
                     }
                 }
@@ -868,6 +872,7 @@ void start_main_loop(void)
                         data.Type = MSG_GROUP_TO_ID;
                         strncpy(data.Name,name.c_str(),MAX_NAME);
                         data.ID.GID = id + BaseID;
+                        generate_group_list(name,extra_data,data.Len,data.Extra.GID);
                     }
                 }
                 break;
@@ -898,21 +903,7 @@ void start_main_loop(void)
                             data.Type = MSG_ENUM_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
                             data.ID.GID = id + BaseID;
-                            // generate list of members
-                            std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(name);
-                            if( git != GroupMembers.end() ){
-                                data.Extra.GID = git->second.size(); // number of members
-                                std::set<std::string>::iterator it = git->second.begin();
-                                std::set<std::string>::iterator ie = git->second.end();
-                                std::stringstream sextra;
-                                while( it != ie ){
-                                    sextra << *it << "\0";
-                                    it++;
-                                }
-                                sextra << "\0";
-                                extra_data = sextra.str();
-                                data.Len = extra_data.size();
-                            }
+                            generate_group_list(name,extra_data,data.Len,data.Extra.GID);
                         }
                     }
                 }
@@ -1062,6 +1053,27 @@ int GetOrRegisterGroup(const std::string& name)
     if( p_gr == NULL ) return(-1);
     if( p_gr->gr_gid == 0 ) return(-1);
     return( p_gr->gr_gid );
+}
+
+// -----------------------------------------------------------------------------
+
+void generate_group_list(const std::string& gname,std::string& extra_data,size_t& len,gid_t& num)
+{
+    // generate list of members
+    std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(gname);
+    if( git != GroupMembers.end() ){
+        num = git->second.size(); // number of members
+        std::set<std::string>::iterator it = git->second.begin();
+        std::set<std::string>::iterator ie = git->second.end();
+        std::stringstream sextra;
+        while( it != ie ){
+            sextra << *it << "\0";
+            it++;
+        }
+        sextra << "\0";
+        extra_data = sextra.str();
+        len = extra_data.length();
+    }
 }
 
 // -----------------------------------------------------------------------------
