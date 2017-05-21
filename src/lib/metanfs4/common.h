@@ -74,8 +74,8 @@ struct SNFS4Message {
     union Supplementary {
         uid_t   UID;
         gid_t   GID;
-        size_t  Len;
     } Extra;
+    size_t  Len;    /* extra message size */
     char    Name[MAX_NAME+1];
 };
 

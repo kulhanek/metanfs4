@@ -10,6 +10,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <common.h>
+#include <sys/socket.h>
+#include <stddef.h>
 #include <metanfs4_nsswitch.h>
 
 /*
@@ -262,12 +264,56 @@ DLL_LOCAL NSS_STATUS
 _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *buffer, size_t buflen, int *errnop)
 {
     NSS_STATUS          ret;
-    static char*        ptr = NULL;
+    struct sockaddr_un  address;
+    socklen_t           addrlen;
+    size_t              numofmems;
+    size_t              memlen;
+    size_t              len;
+    char*               p_member;
+    int                 type,i;
+    int                 clisckt;
 
     *errnop = ENOENT;
+    if( p_msg == NULL ) return(NSS_STATUS_NOTFOUND);
 
-    if( exchange_data(p_msg) != 0 ) return(NSS_STATUS_NOTFOUND);
-    if( p_msg->ID.GID == 0 ) return(NSS_STATUS_NOTFOUND);
+    clisckt = socket(AF_UNIX,SOCK_SEQPACKET,0);
+    if( clisckt == -1 ) return(NSS_STATUS_NOTFOUND);
+
+    memset(&address, 0, sizeof(struct sockaddr_un));
+
+    address.sun_family = AF_UNIX;
+    strncpy(address.sun_path,SERVERNAME,UNIX_PATH_MAX);
+
+    addrlen = offsetof(struct sockaddr_un, sun_path) + strlen(address.sun_path) + 1;
+
+    if( connect(clisckt,(struct sockaddr *) &address, addrlen) == -1 )  return(NSS_STATUS_NOTFOUND);
+
+    type = p_msg->Type;
+
+    if( write(clisckt,p_msg,sizeof(struct SNFS4Message)) != sizeof(struct SNFS4Message) ){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
+
+    memset(p_msg,0,sizeof(struct SNFS4Message));
+
+    if( read(clisckt,p_msg,sizeof(struct SNFS4Message)) != sizeof(struct SNFS4Message) ){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
+
+    /* ensure \0 termination of the string */
+    p_msg->Name[MAX_NAME] = '\0';
+
+    if( p_msg->Type != type){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
+
+    if( p_msg->ID.GID == 0 ){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
 
     /* fill the structure */
     ret = _setup_item(&buffer,&buflen,&(result->gr_name),p_msg->Name,errnop);
@@ -276,8 +322,33 @@ _nss_metanfs4_getgroup(struct SNFS4Message* p_msg, struct group *result, char *b
     if( ret != NSS_STATUS_SUCCESS ) return(ret);
     result->gr_gid = p_msg->ID.GID;
 
-    /* members */
-    result->gr_mem = &ptr;
+    /* read members */
+    memlen = p_msg->Len;
+    numofmems = p_msg->Extra.GID;
+
+    p_member = buffer;
+
+    if( memlen + sizeof(char*)*(numofmems+1) > buflen ) {
+        *errnop = ERANGE;
+        return(NSS_STATUS_TRYAGAIN);
+    }
+    if( read(clisckt,buffer,memlen) != memlen ){
+        close(clisckt);
+        return(NSS_STATUS_NOTFOUND);
+    }
+    close(clisckt);
+
+    buffer += memlen;
+    buflen -= memlen;
+
+    result->gr_mem = (char**)buffer;
+
+    for(i = 0; i < numofmems; i++){
+        result->gr_mem[i] =  p_member;
+        len = strlen(p_member) + 1;
+        p_member += len;
+    }
+    result->gr_mem[i] =  NULL;
 
     *errnop = 0;
     return(NSS_STATUS_SUCCESS);

@@ -659,8 +659,11 @@ void start_main_loop(void)
             syslog(LOG_INFO,"request: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.ID.UID,data.Name);
         }
 
+        // supplementary data
+        std::string extra_data;
+
         // process data --------------------------
-        try{
+        try{           
             switch(data.Type){
 
                 case MSG_IDMAP_REG_NAME:{
@@ -762,18 +765,23 @@ void start_main_loop(void)
                     } else {
                         lname = is_princ_local(name);
                     }
-                    uid_t id = NobodyID;
+                    uid_t uid = 0;
+                    gid_t gid = 0;
 
                     if( (! lname.empty()) && (lname.find("@") == std::string::npos) ){
                         struct passwd *p_pwd = getpwnam(lname.c_str());  // only LOCAL query!!!
                         if( p_pwd != NULL ){
-                            id = p_pwd->pw_uid;
+                            uid = p_pwd->pw_uid;
+                            gid = p_pwd->pw_gid;
                         }
                     }
+                    if( uid == 0 ) uid = NobodyID;
+                    if( gid == 0 ) gid = NoGroupID;
 
                     memset(&data,0,sizeof(data));
                     data.Type = MSG_IDMAP_PRINC_TO_ID;
-                    data.ID.UID = id;
+                    data.ID.UID = uid;
+                    data.Extra.GID = gid;
                 }
                 break;
 
@@ -890,6 +898,21 @@ void start_main_loop(void)
                             data.Type = MSG_ENUM_GROUP;
                             strncpy(data.Name,name.c_str(),MAX_NAME);
                             data.ID.GID = id + BaseID;
+                            // generate list of members
+                            std::map<std::string, std::set<std::string> >::iterator git = GroupMembers.find(name);
+                            if( git != GroupMembers.end() ){
+                                data.Extra.GID = git->second.size(); // number of members
+                                std::set<std::string>::iterator it = git->second.begin();
+                                std::set<std::string>::iterator ie = git->second.end();
+                                std::stringstream sextra;
+                                while( it != ie ){
+                                    sextra << *it << "\0";
+                                    it++;
+                                }
+                                sextra << "\0";
+                                extra_data = sextra.str();
+                                data.Len = extra_data.size();
+                            }
                         }
                     }
                 }
@@ -906,11 +929,19 @@ void start_main_loop(void)
         
         if( Verbose ){
             syslog(LOG_INFO,"response: type(%d), ID(%d), Extra(%d), name(%s)",data.Type,data.ID.UID,data.Extra.UID,data.Name);
-        }        
+        }
 
         // send response -------------------------
         if( write(connsckt,&data,sizeof(data)) != sizeof(data) ){
             syslog(LOG_ERR,"unable to send message");
+        }
+        if( data.Len > 0 ){
+            if( Verbose ){
+                syslog(LOG_INFO,"response: type(%d), extra data sent (%ld)",data.Type,data.Len);
+            }
+            if( (size_t)write(connsckt,extra_data.data(),extra_data.length()) != extra_data.length() ){
+                syslog(LOG_ERR,"unable to send extra message");
+            }
         }
 
         close(connsckt);
