@@ -932,7 +932,10 @@ void start_main_loop(void)
                 syslog(LOG_INFO,"response: type(%d), extra data sent (%ld)",data.Type,data.Len);
             }
             if( (size_t)write(connsckt,extra_data.data(),extra_data.length()) != extra_data.length() ){
-                syslog(LOG_ERR,"unable to send extra message");
+                if( Verbose ){
+                    // the message can be discarded by client - print info only in verbose mode
+                    syslog(LOG_ERR,"unable to send extra message");
+                }
             }
         }
 
