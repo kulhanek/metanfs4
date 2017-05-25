@@ -20,6 +20,8 @@
 # ==============================================================================
 
 import sys
+import os.path
+import argparse
 
 # ------------------------------------------------------------------------------
 
@@ -50,4 +52,19 @@ def add_domain(infilename, domain):
 
 # ------------------------------------------------------------------------------
 
-add_domain(sys.argv[1], sys.argv[2])
+def Main():
+    parser = argparse.ArgumentParser(description='This program reads unix group file (first argument is path to file), adds domain (second argument) to every group and user and prints new group file to standard output')
+    parser.add_argument("path_to_group_file", help = "Path to group file you want to change", type=str)
+    parser.add_argument("name_of_domain", help = "Name of domain which you want to append- letters only", type=str)
+    args = parser.parse_args()
+    if (os.path.isfile(args.path_to_group_file) == False):
+        print "File does not exists."
+        return()
+    if(args.name_of_domain.isalpha() == False):
+        print "Domain name can contain only letters"
+        return()
+    add_domain(args.path_to_group_file, args.name_of_domain)
+    return()
+
+if __name__  == '__main__' :
+    Main()
