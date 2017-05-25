@@ -53,17 +53,19 @@ def add_domain(infilename, domain):
 # ------------------------------------------------------------------------------
 
 def Main():
-    parser = argparse.ArgumentParser(description='This program reads unix group file (first argument is path to file), adds domain (second argument) to every group and user and prints new group file to standard output')
-    parser.add_argument("path_to_group_file", help = "Path to group file you want to change", type=str)
-    parser.add_argument("name_of_domain", help = "Name of domain which you want to append- letters only", type=str)
+    parser = argparse.ArgumentParser(description =
+        "This program reads the file with unix groups and adds the domain to every "
+        "group and user. The result is printed to the standard output.")
+    parser.add_argument("groupfile", help = "input group file", type=str)
+    parser.add_argument("DOMAIN", help = "domain name", type=str)
     args = parser.parse_args()
-    if (os.path.isfile(args.path_to_group_file) == False):
-        print "File does not exists."
+    if (os.path.isfile(args.groupfile) == False):
+        print ">>> ERROR: The file '" + args.groupfile + "' does not exist!"
         return()
-    if(args.name_of_domain.isalpha() == False):
-        print "Domain name can contain only letters"
+    if(args.DOMAIN.isalpha() == False):
+        print ">>> ERROR: Unsupported characters in the domain name!"
         return()
-    add_domain(args.path_to_group_file, args.name_of_domain)
+    add_domain(args.groupfile, args.DOMAIN)
     return()
 
 if __name__  == '__main__' :
