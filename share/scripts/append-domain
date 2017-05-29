@@ -25,7 +25,7 @@ import argparse
 
 # ------------------------------------------------------------------------------
 
-def add_domain(infilename, domain):
+def add_domain(maxgid, infilename, domain):
     '''
     this function adds domain to every group and user in group file
     '''
@@ -34,18 +34,18 @@ def add_domain(infilename, domain):
     for line in lines:
         
         line_splitted_all = line[:-1].split(":")                # delete '\n' at the end of file and split line by ':'
-        
-        sys.stdout.write(line_splitted_all[0]+"@"+domain+":")   # write group name with domain
-        for i in range(1,len(line_splitted_all)-1):             # write passwd and ID if exists
-            sys.stdout.write(line_splitted_all[i]+":")
-
-        if(line_splitted_all[-1] != ''):                        # if group contains users
-            line_splitted_names = line_splitted_all[-1].split(",")              # split user list
-            for k in range(0, len(line_splitted_names)-1): 
-                sys.stdout.write(line_splitted_names[k]+ "@" + domain + ",")    # write names with domain
-            sys.stdout.write(line_splitted_names[-1]+"@"+domain)                # last line without comma
-            
-        sys.stdout.write("\n")                                  # new line for every line
+        if (int(line_splitted_all[2]) >= maxgid):
+        	sys.stdout.write(line_splitted_all[0]+"@"+domain+":")   # write group name with domain
+        	for i in range(1,len(line_splitted_all)-1):             # write passwd and ID if exists
+            		sys.stdout.write(line_splitted_all[i]+":")
+	
+        	if(line_splitted_all[-1] != ''):                        # if group contains users
+            		line_splitted_names = line_splitted_all[-1].split(",")              # split user list
+            		for k in range(0, len(line_splitted_names)-1): 
+                		sys.stdout.write(line_splitted_names[k]+ "@" + domain + ",")    # write names with domain
+            		sys.stdout.write(line_splitted_names[-1]+"@"+domain)                # last line without comma
+            	
+		sys.stdout.write("\n")                                  # new line for every line
 
     f.close()
     return 0
@@ -58,6 +58,7 @@ def Main():
         "group and user. The result is printed to the standard output.")
     parser.add_argument("groupfile", help = "input group file", type=str)
     parser.add_argument("DOMAIN", help = "domain name", type=str)
+    parser.add_argument("--mgid", help = "Min groupID value (if gid is bigger value, it will not be written)", type=int, default = 0)
     args = parser.parse_args()
     if (os.path.isfile(args.groupfile) == False):
         print ">>> ERROR: The file '" + args.groupfile + "' does not exist!"
@@ -65,7 +66,7 @@ def Main():
     if(args.DOMAIN.isalpha() == False):
         print ">>> ERROR: Unsupported characters in the domain name!"
         return()
-    add_domain(args.groupfile, args.DOMAIN)
+    add_domain(args.mgid, args.groupfile, args.DOMAIN)
     return()
 
 if __name__  == '__main__' :
