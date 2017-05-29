@@ -34,7 +34,7 @@ def add_domain(maxgid, infilename, domain):
     for line in lines:
         
         line_splitted_all = line[:-1].split(":")                # delete '\n' at the end of file and split line by ':'
-        if (int(line_splitted_all[2]) >= maxgid):
+        if (int(line_splitted_all[2]) >= maxgid):                  # check for gid
         	sys.stdout.write(line_splitted_all[0]+"@"+domain+":")   # write group name with domain
         	for i in range(1,len(line_splitted_all)-1):             # write passwd and ID if exists
             		sys.stdout.write(line_splitted_all[i]+":")
@@ -58,7 +58,7 @@ def Main():
         "group and user. The result is printed to the standard output.")
     parser.add_argument("groupfile", help = "input group file", type=str)
     parser.add_argument("DOMAIN", help = "domain name", type=str)
-    parser.add_argument("--mgid", help = "Min groupID value (if gid is bigger value, it will not be written)", type=int, default = 0)
+    parser.add_argument("--mgid", help = "Min groupID value (if gid is smaller than this value, group line will not be written)", type=int, default = 0)
     args = parser.parse_args()
     if (os.path.isfile(args.groupfile) == False):
         print ">>> ERROR: The file '" + args.groupfile + "' does not exist!"
